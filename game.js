@@ -28,29 +28,40 @@
         return a;
     }
 
-    // on: when the card can fire. verdict/defeat fire on those moments; viewer/details/check/ai fire once per item.
+    // on: when the card fires. verdict/defeat fire on those moments; viewer/details/check/ai fire once per item.
+    // on "play": an active card you tap and pay Light for.
     const CARDS = {
         gaze: { name: "Steady Gaze", on: "verdict", test: t => t.seen >= 2, xp: 12, text: "Verdict after seeing 2+ photos", unlock: 1 },
-        dawn: { name: "First Light", on: "verdict", test: t => t.firstOfFoe, xp: 10, mom: 1, text: "Your first verdict on a foe", unlock: 1 },
+        dawn: { name: "First Light", on: "verdict", test: t => t.firstOfFoe, xp: 10, light: 1, text: "Your first verdict on a foe", unlock: 1 },
         ledger: { name: "Ledger Spark", on: "check", xp: 15, text: "Confirm or correct a value", unlock: 1 },
         closer: { name: "Last Word", on: "defeat", xp: 20, scrap: 3, text: "Vanquish a foe", unlock: 1 },
         panorama: { name: "Panorama", on: "verdict", test: t => t.total > 1 && t.seen >= t.total, xp: 25, text: "Verdict after seeing every photo", unlock: 1 },
-        loupe: { name: "Loupe", on: "viewer", xp: 10, mom: 1, text: "Open a photo full screen", unlock: 1 },
+        loupe: { name: "Loupe", on: "viewer", xp: 10, light: 1, text: "Open a photo full screen", unlock: 1 },
         notes: { name: "Field Notes", on: "details", xp: 10, text: "Read the details", unlock: 1 },
+        flare: { name: "Lantern Flare", on: "play", cost: 2, text: "This foe drops double XP and shards", unlock: 1 },
+        wind: { name: "Second Wind", on: "play", cost: 1, text: "Draw 2 cards", unlock: 1 },
         bounty: { name: "Bounty", on: "defeat", scrap: 8, text: "Vanquish a foe", unlock: 2 },
         revisit: { name: "Return Visit", on: "verdict", test: t => t.wasLater, xp: 25, text: "Decide one you set aside", unlock: 2 },
+        quiet: { name: "Quiet Step", on: "verdict", test: t => t.details, xp: 15, text: "Verdict on an item whose details you read", unlock: 2 },
+        whet: { name: "Whetstone", on: "play", cost: 2, text: "Upgrade a random card in your deck", unlock: 2 },
+        tithe: { name: "Moon Tithe", on: "play", cost: 1, scrap: 8, text: "Gain 8 moonshards", unlock: 2 },
         oracle: { name: "Second Sight", on: "ai", xp: 15, text: "Ask the AI about it", unlock: 3 },
-        surge: { name: "Moonsurge", on: "verdict", test: t => t.momentum >= 4, xp: 30, momReset: true, text: "Verdict with 4+ Momentum (spends it)", unlock: 4 },
+        inktrail: { name: "Ink Trail", on: "check", xp: 5, light: 2, text: "Confirm or correct a value", unlock: 3 },
+        insight: { name: "Insight", on: "play", cost: 1, text: "The next card that fires crits for double", unlock: 3 },
+        rally: { name: "War Drum", on: "verdict", test: t => t.played >= 3, xp: 5, light: 2, text: "Verdict after 3+ cards played on a foe", unlock: 4 },
+        surge: { name: "Moonsurge", on: "play", cost: 4, xp: 40, text: "Gain 40 XP now", unlock: 4 },
         deep: { name: "Deep Scan", on: "verdict", test: t => t.seen >= 4, xp: 30, text: "Verdict after seeing 4+ photos", unlock: 5 },
-        rally: { name: "War Drum", on: "verdict", test: t => t.played >= 3, xp: 5, mom: 3, text: "Verdict after 3+ cards played on a foe", unlock: 6 }
+        echo: { name: "Echo", on: "play", cost: 2, text: "Fire the last card again", unlock: 5 },
+        fullmoon: { name: "Full Moon", on: "defeat", xp: 10, light: 3, text: "Vanquish a foe", unlock: 6 },
+        bind: { name: "Binding Rite", on: "play", cost: 3, text: "Strip this foe of its trait", unlock: 6 }
     };
     const PHOTO_CARDS = new Set(["gaze", "panorama", "deep", "loupe"]);
-    const INK_CARDS = new Set(["ledger", "notes"]);
+    const INK_CARDS = new Set(["ledger", "notes", "inktrail"]);
     // Each class starts with a deck that rewards a different real habit.
     const CLASSES = {
-        seer: { name: "Seer", text: "Rewards looking at every photo.", deck: ["gaze", "gaze", "panorama", "loupe", "closer"] },
-        scribe: { name: "Scribe", text: "Rewards checking values and reading the details.", deck: ["ledger", "ledger", "notes", "dawn", "closer"] },
-        warden: { name: "Warden", text: "Builds momentum and finishes foes.", deck: ["dawn", "dawn", "gaze", "closer", "rally"] }
+        seer: { name: "Seer", text: "Rewards looking at every photo.", deck: ["gaze", "gaze", "panorama", "loupe", "flare"] },
+        scribe: { name: "Scribe", text: "Rewards checking values and reading the details.", deck: ["ledger", "ledger", "notes", "quiet", "wind"] },
+        warden: { name: "Warden", text: "Builds Light and finishes foes.", deck: ["dawn", "dawn", "closer", "rally", "flare"] }
     };
     const STARTER = CLASSES.seer.deck;
     // Twelve kinds of Defect; each group gets one by its id, the last group is always the Sovereign.
@@ -60,11 +71,26 @@
     const RELICS = {
         lens: { name: "Brass Lens", text: "Photo cards give +50% XP" },
         ink: { name: "Ink of Night", text: "Ledger & Notes cards give +50% XP" },
-        lamp: { name: "Lantern", text: "Start each foe with 2 Momentum" },
+        lamp: { name: "Lantern", text: "Start each foe with 2 Light" },
         pouch: { name: "Deep Pouch", text: "+1 card in hand" },
         gear: { name: "Moon Gear", text: "+3 Moonshards per foe" },
-        bolt: { name: "Lucky Bolt", text: "Cards have a 20% chance to crit for double" }
+        bolt: { name: "Lucky Bolt", text: "Cards have a 20% chance to crit for double" },
+        owl: { name: "Owl Feather", text: "+1 Light whenever a new foe appears" },
+        thimble: { name: "Silver Thimble", text: "Active cards cost 1 less (never below 1)" },
+        seal: { name: "Wax Seal", text: "Your first active card on each foe is free" },
+        moth: { name: "Moth Lamp", text: "Hold up to 15 Light instead of 10" },
+        compass: { name: "Cracked Compass", text: "See one more path when you choose your road" }
     };
+    // Every foe carries one trait. Traits change rewards and how cards play out, never what a verdict does.
+    const TRAITS = {
+        greedy: { name: "Greedy", text: "Drops 6 extra moonshards" },
+        glimmer: { name: "Glimmering", text: "+5 shards for each item where you saw every photo" },
+        restless: { name: "Restless", text: "Zooming in gives 1 extra Light" },
+        armored: { name: "Armored", text: "Cards give 25% less XP here, but it drops 50% more" },
+        brittle: { name: "Brittle", text: "Cards have a 25% crit chance here" },
+        shy: { name: "Shy", text: "The first photo you flip on each item gives 1 extra Light" }
+    };
+    const traitOf = gid => Object.keys(TRAITS)[hash(`${gid}|trait`) % Object.keys(TRAITS).length];
     const RANKS = ["Lantern-bearer", "Wayfarer", "Seer", "Moonwarden", "Thornknight", "Elder of the Wood", "Legend of the Pale Moon"];
     const rankOf = level => RANKS[Math.min(RANKS.length - 1, Math.floor((level - 1) / 3))];
 
@@ -82,9 +108,21 @@
         if (up) xp = Math.round(xp * 1.5);
         if (relics.includes("lens") && PHOTO_CARDS.has(id)) xp = Math.round(xp * 1.5);
         if (relics.includes("ink") && INK_CARDS.has(id)) xp = Math.round(xp * 1.5);
-        return { xp, mom: def.mom ? def.mom + (up ? 1 : 0) : 0, scrap: def.scrap ? Math.round(def.scrap * (up ? 1.5 : 1)) : 0 };
+        return { xp, light: def.light ? def.light + (up ? 1 : 0) : 0, scrap: def.scrap ? Math.round(def.scrap * (up ? 1.5 : 1)) : 0 };
     }
-    const withMomentum = (xp, mom) => Math.round(xp * (1 + 0.1 * Math.min(10, Math.max(0, mom))));
+    // Light cost of an active card: upgrades and the Silver Thimble make it cheaper, the Wax Seal makes the first one free.
+    function costOf(id, up, relics, sealReady) {
+        if (sealReady && relics.includes("seal")) return 0;
+        const base = CARDS[id].cost || 0;
+        return Math.max(base ? 1 : 0, base - (up ? 1 : 0) - (relics.includes("thimble") ? 1 : 0));
+    }
+    const lightCap = relics => (relics.includes("moth") ? 15 : 10);
+    // How closely the run was played: share of verdicts made after looking properly. Never about speed.
+    function gradeOf(close, items) {
+        if (!items) return "-";
+        const r = close / items;
+        return r >= 0.9 ? "S" : r >= 0.7 ? "A" : r >= 0.5 ? "B" : "C";
+    }
 
     function groupsOf(cards) {
         const seen = new Map();
@@ -97,18 +135,16 @@
     }
 
     // The route: one node per group in pack order; an elite where a group is gated or big; the last is the boss.
-    // A rest stop follows every third foe.
+    // Rest stops and events now come every second foe (see eventAfter), since the player picks the order.
     function buildMap(cards) {
         const gs = groupsOf(cards);
         const avg = gs.reduce((n, g) => n + g.count, 0) / (gs.length || 1);
         const nodes = [];
-        let k = 0;
         gs.forEach((g, i) => {
             const gr = g.group;
             const blocked = (Array.isArray(gr.gates) && gr.gates.some(x => x && x.level === "block")) || Boolean(gr.flag && gr.flag.tone === "block");
             const type = i === gs.length - 1 ? "boss" : (blocked || (g.count >= 4 && g.count >= avg * 1.6)) ? "elite" : "foe";
             nodes.push({ type, groupId: String(gr.groupId), count: g.count });
-            if (i % 3 === 2 && i < gs.length - 1) { k++; nodes.push({ type: ["camp", "shop", "cache"][(k - 1) % 3], id: `ev${k}` }); }
         });
         return nodes;
     }
@@ -124,7 +160,8 @@
         const cls = CLASSES[hero] ? hero : "seer";
         const deck = CLASSES[cls].deck.map(id => inst(id));
         return { packId, hero: cls, deck, draw: shuffle(rng(seed), deck.map(c => c.uid)), discard: [], hand: [], relics: [], scrap: 0, xp: 0,
-            momentum: 0, played: 0, first: true, foe: null, scored: {}, later: {}, defeated: {}, met: {}, events: {}, done: false, introduced: false, startedAt: Date.now() };
+            light: 0, played: 0, first: true, foe: null, scored: {}, later: {}, defeated: {}, met: {}, events: {}, done: false, introduced: false,
+            pref: null, defeats: 0, close: 0, items: 0, double: null, bound: null, sealUsed: null, nextCrit: false, lastFired: null, startedAt: Date.now() };
     }
     function drawOne(run, r) {
         if (!run.draw.length) { run.draw = shuffle(r, run.discard); run.discard = []; }
@@ -151,8 +188,16 @@
         for (const pile of ["draw", "discard", "hand"]) run[pile] = run[pile].filter(u => u !== uid);
     }
     const rewardChoices = (r, level, n) => shuffle(r, Object.keys(CARDS).filter(id => CARDS[id].unlock <= level)).slice(0, n);
+    // After every second foe: a stop on the road, in this order.
+    const eventAfter = defeats => (defeats > 0 && defeats % 2 === 0 ? ["camp", "mystery", "shop", "mystery", "cache"][((defeats / 2) - 1) % 5] : null);
+    // Paths you may take next: groups still to finish, in route order; the boss only when it is all that is left.
+    function pathChoices(route, isOpen, n) {
+        const open = route.filter(x => isOpen(x.groupId));
+        const nonBoss = open.filter(x => x.type !== "boss");
+        return (nonBoss.length ? nonBoss : open).slice(0, n);
+    }
 
-    const rules = { hash, rng, shuffle, CARDS, RELICS, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, withMomentum, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    const rules = { hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -183,7 +228,16 @@
 
     function topCard() {
         if (!ctx || !ctx.pack) return null;
-        return V.remainingCards(ctx.cards, ctx.decisions, ctx.actions).filter(c => !V.isDecided(ctx.actions, ctx.decisions[c.key]))[0] || null;
+        const q = V.remainingCards(ctx.cards, ctx.decisions, ctx.actions).filter(c => !V.isDecided(ctx.actions, ctx.decisions[c.key]));
+        const pref = run && run.pref;
+        return (pref && q.find(c => String(c.group.groupId) === pref)) || q[0] || null;
+    }
+    const groupOpen = gid => ctx.cards.some(c => String(c.group.groupId) === String(gid) && !V.isDecided(ctx.actions, ctx.decisions[c.key]));
+    const traitHere = gid => (run && run.bound === String(gid) ? null : traitOf(gid));
+    function prefer(gid) {
+        run.pref = gid ? String(gid) : null;
+        saveRun();
+        document.dispatchEvent(new CustomEvent("vinder:prefer", { detail: run.pref }));
     }
     let mapCache = { cards: null, nodes: [] };
     function nodes() {
@@ -476,7 +530,7 @@
     const $ = id => document.getElementById(id);
     const portraitEl = $("gPortrait");
     const ICON = {
-        mom: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 14h6l-1 8 8-12h-6z"/></svg>`,
+        mom: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2h6v2H9zM8 5h8l1 3H7zM7 9h10v10a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3zM12 12c-1.5 2-1.5 4 0 5 1.5-1 1.5-3 0-5z"/></svg>`,
         shard: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 19 9 12 22 5 9z"/></svg>`
     };
 
@@ -560,7 +614,8 @@
         const L = levelOf(meta.xp);
         $("gLvl").textContent = String(L.level);
         $("gXpFill").style.setProperty("--xp", `${Math.round((L.into / L.need) * 360)}deg`);
-        $("gMom").innerHTML = `${ICON.mom}<b>${run ? run.momentum : 0}</b>`;
+        $("gMom").innerHTML = `${ICON.mom}<b>${run ? run.light : 0}</b>`;
+        $("gMom").title = `Light ${run ? run.light : 0} of ${run ? lightCap(run.relics) : 10}`;
         $("gScrap").innerHTML = `${ICON.shard}<b>${run ? run.scrap : 0}</b>`;
         const hero = run && CLASSES[run.hero] ? run.hero : "seer";
         const face = $("gHeroFace");
@@ -577,7 +632,7 @@
         if (lf.dataset.hero !== lh) { lf.dataset.hero = lh; lf.replaceChildren(h("span", "g-initial", CLASSES[lh].name[0]), liveArt("heroes", lh, "", "")); }
     }
     const rarity = def => def.unlock >= 4 ? "epic" : def.unlock >= 2 ? "rare" : "common";
-    const gainText = (id, g) => [g.xp && `+${g.xp} XP`, g.mom && `+${g.mom} momentum`, g.scrap && `+${g.scrap} shards`, CARDS[id].momReset && "spends momentum"].filter(Boolean).join(" · ");
+    const gainText = (id, g) => (CARDS[id].on === "play" ? `Costs ${costOf(id, false, run ? run.relics : [], false)} Light` : [g.xp && `+${g.xp} XP`, g.light && `+${g.light} Light`, g.scrap && `+${g.scrap} shards`].filter(Boolean).join(" · "));
     function renderHand() {
         const hand = $("gHand");
         hand.replaceChildren();
@@ -594,12 +649,26 @@
             pic.append(h("span", "g-initial", def.name[0]), art(`cards/${c.id}`, "", ""));
             b.append(pic, h("span", "g-card-name", def.name));
             if (c.up) b.appendChild(h("span", "g-plus", "+"));
+            const cost = def.on === "play" ? costOf(c.id, c.up, run.relics, run.sealUsed !== run.foe) : null;
+            if (cost !== null) {
+                b.classList.add("g-active");
+                if (run.light >= cost && run.foe) b.classList.add("g-ready");
+                b.appendChild(h("span", "g-cost", String(cost)));
+            }
             b.addEventListener("click", () => {
                 const tip = $("gTip");
                 const same = !tip.hidden && tip.dataset.uid === uid;
                 tip.hidden = same;
                 tip.dataset.uid = uid;
-                tip.replaceChildren(h("b", "", `${def.name}${c.up ? "+" : ""}`), h("span", "", def.text), h("em", "", gainText(c.id, cardGain(c.id, c.up, run.relics))));
+                const parts = [h("b", "", `${def.name}${c.up ? "+" : ""}`), h("span", "", def.text)];
+                if (cost !== null) {
+                    const play = h("button", "btn btn-primary g-play", run.light >= cost ? `Play · ${cost} Light` : `Need ${cost} Light (you have ${run.light})`);
+                    play.type = "button";
+                    play.disabled = run.light < cost || !run.foe;
+                    play.addEventListener("click", ev => { ev.stopPropagation(); tip.hidden = true; playActive(uid); });
+                    parts.push(play);
+                } else parts.push(h("em", "", gainText(c.id, cardGain(c.id, c.up, run.relics))));
+                tip.replaceChildren(...parts);
                 sfx("ui");
             });
             hand.appendChild(b);
@@ -651,7 +720,9 @@
         $("gFoeName").textContent = foeName(gid);
         $("gFoeTag").textContent = type === "boss" ? "Boss" : type === "elite" ? "Elite" : "";
         $("gFoeTag").className = `g-tag g-tag-${type}`;
-        $("gFoeSub").textContent = [top.group.title, top.group.subtitle].filter(Boolean).join(" · ");
+        const tr = traitHere(gid);
+        $("gFoeSub").textContent = [top.group.title, tr && TRAITS[tr].name].filter(Boolean).join(" · ");
+        $("gFoeSub").title = tr ? `${TRAITS[tr].name}: ${TRAITS[tr].text}` : "";
         renderLife(gid, ctx.cards.filter(c => String(c.group.groupId) === gid));
         renderHand();
     }
@@ -774,6 +845,7 @@
                 run.discard = []; run.hand = []; run.foe = null;
                 sync();
             }
+            queuePath();
         } }] });
         pickHero(run.hero || "seer");
         say(spoken, true);
@@ -872,16 +944,63 @@
         say(line("shop_1"));
     }
     function cacheOverlay() { relicOverlay("Forgotten cache", "Something glints in the moss"); say(line("cache_1")); }
-    function eventOverlay(type) { (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : cacheOverlay)(); }
+    // Mystery stops: small stories with a trade-off.
+    const MYSTERIES = [
+        { id: "lantern", title: "A lost lantern", lore: "A lantern sits on a car roof, still burning. Someone will come back for it. Probably.",
+            options: [{ label: "Take it (+3 Light)", go: () => earnLight(3) }, { label: "Leave it for its owner (+20 XP)", go: () => grant(20, homeBtn) }] },
+        { id: "well", title: "The moon well", lore: "Water in an old wheel rim holds the whole moon. It tastes of iron and silver.",
+            options: [{ label: "Drink (upgrade 2 random cards, lose 10 shards)", need: 10, go: () => { run.scrap -= 10; shuffle(Math.random, run.deck.filter(c => !c.up)).slice(0, 2).forEach(c => { c.up = true; }); } },
+                { label: "Fill a flask (+2 Light)", go: () => earnLight(2) }] },
+        { id: "tinker", title: "A tinker's offer", lore: "A tinker in a long coat taps your deck. That one is dull, they say. I have better.",
+            options: [{ label: "Trade a common card for a rarer one", go: () => {
+                const common = run.deck.filter(c => CARDS[c.id].unlock <= 1);
+                const better = Object.keys(CARDS).filter(id => CARDS[id].unlock >= 2 && CARDS[id].unlock <= Math.max(2, level()));
+                if (common.length > 3 && better.length) { removeCard(run, pick(Math.random, common).uid); addCard(run, pick(Math.random, better), false); }
+                else run.scrap += 10;
+            } }, { label: "Decline politely (+10 shards)", go: () => { run.scrap += 10; } }] },
+        { id: "shrine", title: "A whispering shrine", lore: "Bolts and keys hang from a dead tree like bells. They whisper when the wind is right.",
+            options: [{ label: "Leave an offering (15 shards for a relic)", need: 15, go: () => { run.scrap -= 15; const left = Object.keys(RELICS).filter(r => !run.relics.includes(r)); if (left.length) run.relics.push(pick(Math.random, left)); } },
+                { label: "Walk on (+15 XP)", go: () => grant(15, homeBtn) }] },
+        { id: "star", title: "A fallen star", lore: "Something small and bright smoulders in a puddle between two cars.",
+            options: [{ label: "Pocket it (+12 shards)", go: () => { run.scrap += 12; } },
+                { label: "Make a wish (a new card, already sharpened)", go: () => addCard(run, pick(Math.random, rewardChoices(Math.random, level(), 6)), true) }] }
+    ];
+    function mysteryOverlay() {
+        run.seenMyst = run.seenMyst || [];
+        const pool = MYSTERIES.filter(m => !run.seenMyst.includes(m.id));
+        const m = pick(Math.random, pool.length ? pool : MYSTERIES);
+        run.seenMyst.push(m.id);
+        saveRun();
+        const body = h("div", "g-body");
+        body.appendChild(h("p", "g-lore", m.lore));
+        const row = h("div", "g-choices");
+        for (const o of m.options) {
+            const b = h("button", "g-choice", o.label);
+            b.type = "button";
+            b.disabled = Boolean(o.need && run.scrap < o.need);
+            b.addEventListener("click", () => { sfx("confirm"); o.go(); saveRun(); renderHud(); nextOverlay(); });
+            row.appendChild(b);
+        }
+        body.appendChild(row);
+        panel({ kicker: "On the road", title: m.title, body, actions: [] });
+        sfx("page");
+    }
+    function eventOverlay(type) { (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : type === "mystery" ? mysteryOverlay : cacheOverlay)(); }
     function summaryOverlay() {
         const L = levelOf(meta.xp);
         const foes = Object.keys(run.defeated).length;
         const body = h("div", "g-body");
         const dl = h("dl", "g-stats");
-        for (const [k, v] of [["Foes vanquished", foes], ["XP earned", run.xp], ["Deck", `${run.deck.length} cards`], ["Relics", run.relics.map(id => RELICS[id].name).join(", ") || "none"], ["Rank", `Lv ${L.level} ${rankOf(L.level)}`]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
-        const spoken = line("end");
+        for (const [k, v] of [["Foes vanquished", foes], ["XP earned", run.xp], ["Looked closely", `${run.close} of ${run.items} verdicts`], ["Deck", `${run.deck.length} cards`], ["Relics", run.relics.map(id => RELICS[id].name).join(", ") || "none"], ["Rank", `Lv ${L.level} ${rankOf(L.level)}`]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
+        const grade = gradeOf(run.close, run.items);
+        meta.best = meta.best && "SABC".indexOf(meta.best) <= "SABC".indexOf(grade) ? meta.best : grade;
+        saveMeta();
+        const gradeEl = h("div", `g-grade g-grade-${grade}`);
+        gradeEl.append(h("b", "", grade), h("span", "", grade === "S" ? "Not a thing slipped past you." : grade === "A" ? "A careful night's work." : grade === "B" ? "Good. Look a little closer next time." : "The moon saw more than you did."));
+        const spoken = line(grade === "S" ? "grade_s" : "end");
         const text = spoken.en;
-        body.append(h("p", "g-lore", text), dl);
+        body.append(gradeEl, h("p", "g-lore", text), dl);
+        setTimeout(() => sfx("rank"), 400);
         moodOverride = "title"; mood();
         panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body, actions: [{ label: "Onward", primary: true }] });
         say(spoken, true);
@@ -945,6 +1064,18 @@
             grid.appendChild(h("div", `g-coll${open ? "" : " locked"}`, open ? def.name : `Unlocks at Lv ${def.unlock}`));
         }
         body.appendChild(grid);
+        // Bestiary: every kind of Defect you have vanquished.
+        body.appendChild(h("h3", "g-h3", "Bestiary"));
+        const best = h("div", "g-bestiary");
+        for (const [id, name] of [...SPECIES, ["sovereign", "The Pale Sovereign"]]) {
+            const n = (meta.bestiary || {})[id] || 0;
+            const tile = h("div", `g-beast${n ? "" : " unseen"}`);
+            const pic = h("span", "g-beast-art");
+            pic.appendChild(art(`foes/${id}`, "", ""));
+            tile.append(pic, h("b", "", n ? name : "???"), h("small", "", n ? `× ${n}` : "Not yet met"));
+            best.appendChild(tile);
+        }
+        body.appendChild(best);
         panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true, actions: [{ label: "Close", primary: true }] });
     }
     overlay.addEventListener("keydown", e => {
@@ -993,9 +1124,21 @@
         renderMe();
         saveMeta(); saveRun();
     }
+    function earnLight(n) {
+        if (!n || !run) return;
+        const before = run.light;
+        run.light = Math.min(lightCap(run.relics), run.light + n);
+        if (run.light > before) {
+            floatAt($("gMom"), `+${run.light - before} Light`, "g-f-light");
+            if (run.light >= 5 && before < 5 && Math.random() < 0.5) say(line("momentum_1"));
+        }
+        renderMe();
+        renderHand();
+    }
     // Fires matching cards in hand. Item-based kinds fire once per item, and never on an item already scored.
     function trigger(kind, t) {
         let xp = 0;
+        const tr = run.foe ? traitHere(run.foe) : null;
         for (const uid of run.hand.slice()) {
             const c = cardOf(uid);
             if (!c) continue;
@@ -1006,18 +1149,58 @@
                 item.fired.add(kind);
             }
             const g = cardGain(c.id, c.up, run.relics);
-            let gx = g.xp;
-            const crit = Boolean(gx) && run.relics.includes("bolt") && Math.random() < 0.2;
-            if (crit) gx *= 2;
+            let gx = tr === "armored" ? Math.round(g.xp * 0.75) : g.xp;
+            const chance = (run.relics.includes("bolt") ? 0.2 : 0) + (tr === "brittle" ? 0.25 : 0);
+            const crit = Boolean(gx) && (run.nextCrit || Math.random() < chance);
+            if (crit) { gx *= 2; run.nextCrit = false; }
             xp += gx;
-            run.momentum = def.momReset ? 0 : Math.min(10, run.momentum + g.mom);
             run.scrap += g.scrap;
             if (g.scrap) sfx("coin");
+            run.lastFired = { id: c.id, up: c.up };
             flyCard(uid, crit);
             playCard(run, uid, Math.random).forEach(u => justDrawn.add(u));
+            if (g.light) earnLight(g.light);
             if (t) t.played = run.played;
         }
         return xp;
+    }
+    // Active cards: tap, pay Light, get the effect. Nothing here touches a verdict.
+    function playActive(uid) {
+        const c = cardOf(uid);
+        if (!c || !run.foe) return;
+        const sealReady = run.sealUsed !== run.foe;
+        const cost = costOf(c.id, c.up, run.relics, sealReady);
+        if (run.light < cost) return;
+        run.light -= cost;
+        if (run.relics.includes("seal") && sealReady) run.sealUsed = run.foe;
+        const more = c.up ? 1.5 : 1;
+        switch (c.id) {
+        case "flare": run.double = run.foe; floatAt(portraitEl, "Loot ×2", "g-f-xp"); break;
+        case "wind": for (let i = 0; i < 2; i++) { const u = drawOne(run, Math.random); if (u) justDrawn.add(u); } break;
+        case "whet": {
+            const plain = shuffle(Math.random, run.deck.filter(x => !x.up && x.uid !== uid));
+            if (plain[0]) { plain[0].up = true; floatAt(portraitEl, `${CARDS[plain[0].id].name}+`, "g-f-xp"); }
+            break;
+        }
+        case "tithe": run.scrap += Math.round(8 * more); sfx("coin"); floatAt($("gScrap"), `+${Math.round(8 * more)} shards`, "g-f-xp"); break;
+        case "insight": run.nextCrit = true; floatAt(portraitEl, "Next card crits", "g-f-xp"); break;
+        case "surge": grant(Math.round(40 * more), portraitEl); break;
+        case "echo": if (run.lastFired) {
+            const g = cardGain(run.lastFired.id, run.lastFired.up, run.relics);
+            if (g.xp) grant(g.xp, portraitEl);
+            if (g.scrap) run.scrap += g.scrap;
+            if (g.light) earnLight(g.light);
+        } break;
+        case "bind": run.bound = run.foe; floatAt(portraitEl, "Trait broken", "g-f-xp"); break;
+        default: break;
+        }
+        flyCard(uid, false);
+        run.hand = run.hand.filter(u => u !== uid);
+        run.discard.push(uid);
+        run.played++;
+        refillHand(run, Math.random).forEach(u => justDrawn.add(u));
+        saveRun();
+        renderHud();
     }
     function flyCard(uid, crit) {
         sfx(crit ? "crit" : "card");
@@ -1052,8 +1235,8 @@
         const gid = String(group.groupId);
         if (run.foe && run.foe !== gid && run.lastAction === "later" && !run.defeated[run.foe] && groupById(run.foe)) say(line("retreat_1"));
         run.foe = gid;
-        run.momentum = run.relics.includes("lamp") ? 2 : 0;
         run.played = 0;
+        earnLight((run.relics.includes("lamp") ? 2 : 0) + (run.relics.includes("owl") ? 1 : 0));
         run.first = true;
         discardHand(run);
         refillHand(run, Math.random).forEach(u => justDrawn.add(u));
@@ -1085,7 +1268,7 @@
             }
         } else {
             if (String(top.group.groupId) !== run.foe) startFoe(top.group);
-            if (!item || item.key !== top.key) item = { key: top.key, seen: new Set(), fired: new Set() };
+            if (!item || item.key !== top.key) item = { key: top.key, seen: new Set(), fired: new Set(), lit: new Set(), checks: 0 };
         }
         renderHud();
         mood();
@@ -1095,13 +1278,19 @@
         const gid = String(group.groupId);
         if (run.defeated[gid]) return;
         run.defeated[gid] = 1;
+        run.defeats = (run.defeats || 0) + 1;
         const type = nodeType(gid);
+        const tr = traitHere(gid);
         const n = ctx.cards.filter(c => String(c.group.groupId) === gid).length;
-        const mult = run.momentum;
-        let xp = Math.round((20 + 5 * n) * (type === "boss" ? 2 : type === "elite" ? 1.5 : 1));
-        xp += withMomentum(trigger("defeat", { played: run.played }), mult);
-        run.scrap += 2 + (run.relics.includes("gear") ? 3 : 0);
+        let xp = Math.round((20 + 5 * n) * (type === "boss" ? 2 : type === "elite" ? 1.5 : 1) * (tr === "armored" ? 1.5 : 1));
+        xp += trigger("defeat", { played: run.played });
+        let shards = 2 + (run.relics.includes("gear") ? 3 : 0) + (tr === "greedy" ? 6 : 0);
+        if (run.double === gid) { xp *= 2; shards *= 2; }
+        run.scrap += shards;
         meta.foes++;
+        const sp = speciesOf(gid, type).id;
+        meta.bestiary = meta.bestiary || {};
+        meta.bestiary[sp] = (meta.bestiary[sp] || 0) + 1;
         holdUntil = performance.now() + (reduce ? 300 : 1000);
         setTimeout(() => grant(xp, portraitEl), 350);
         sfx("defeat");
@@ -1111,13 +1300,42 @@
         burst(c.x, c.y, { n: 60, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 6, gravity: -0.03, shape: "dot", life: 60 });
         burst(c.x, c.y, { n: 14, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 5, gravity: 0.25, lift: 3 });
         if (type === "boss" || type === "elite" || Math.random() < 0.4) say(line("defeat"));
-        const route = nodes();
-        const next = route[route.findIndex(x => x.groupId === gid) + 1];
+        if (run.pref === gid) run.pref = null;
+        const stop = eventAfter(run.defeats);
         setTimeout(() => {
             enqueue(() => rewardOverlay(gid));
             if (type === "elite" || type === "boss") enqueue(() => relicOverlay("Trophy", `${foeName(gid)} drops a relic`));
-            if (next && !next.groupId && !run.events[next.id]) { run.events[next.id] = 1; saveRun(); enqueue(() => eventOverlay(next.type)); }
+            if (stop && nodes().some(x => groupOpen(x.groupId))) enqueue(() => eventOverlay(stop));
+            queuePath();
         }, reduce ? 300 : 950);
+    }
+    // Choose your path: the next foes you may face. Every vehicle still gets done; this only picks the order.
+    function queuePath() {
+        const options = pathChoices(nodes(), groupOpen, run.relics.includes("compass") ? 4 : 3);
+        if (options.length < 2) { prefer(options[0] ? options[0].groupId : null); return; }
+        enqueue(() => pathOverlay(options));
+    }
+    function pathOverlay(options) {
+        const body = h("div", "g-body");
+        const list = h("div", "g-paths");
+        for (const o of options) {
+            const sp = speciesOf(o.groupId, o.type), tr = traitHere(o.groupId), g = groupById(o.groupId);
+            const left = ctx.cards.filter(c => String(c.group.groupId) === o.groupId && !V.isDecided(ctx.actions, ctx.decisions[c.key])).length;
+            const b = h("button", `g-path g-path-${o.type}`);
+            b.type = "button";
+            const pic = h("span", "g-path-art");
+            pic.appendChild(liveArt("foes", sp.id, "", ""));
+            const txt = h("span", "g-path-text");
+            txt.append(h("b", "", sp.name), h("small", "", [g && g.title, `${left} to decide`].filter(Boolean).join(" · ")));
+            if (tr) txt.appendChild(h("em", "", `${TRAITS[tr].name}: ${TRAITS[tr].text}`));
+            b.append(pic, txt);
+            if (o.type === "elite") b.appendChild(h("span", "g-tag g-tag-elite", "Elite"));
+            b.addEventListener("click", () => { sfx("confirm"); prefer(o.groupId); nextOverlay(); });
+            list.appendChild(b);
+        }
+        body.append(h("p", "g-lore", "The road forks under the moon. Which way?"), list,
+            h("p", "g-fine", "Every vehicle still gets inspected; this only chooses the order. Elites drop relics."));
+        panel({ kicker: "Choose your path", title: "The road forks", body, actions: [] });
     }
 
     // ---------- app events ----------
@@ -1126,7 +1344,9 @@
         const saved = store.get(runKey(ctx.pack.packId), null);
         run = saved && Array.isArray(saved.deck) ? saved : newRun(ctx.pack.packId, hash(ctx.pack.packId));
         greet = Boolean(saved && saved.introduced && !saved.done);
+        if (run.light === undefined) { run.light = 0; delete run.momentum; }
         if (!saved) saveRun();
+        document.dispatchEvent(new CustomEvent("vinder:prefer", { detail: run.pref || null }));
         item = null;
         portraitEl.dataset.gid = "";
     });
@@ -1157,14 +1377,16 @@
         if (!run.scored[card.key]) {
             // Undo then redo earns nothing twice.
             run.scored[card.key] = 1;
-            const t = { seen: item && item.key === card.key ? item.seen.size : 0, total: card.photos.length, firstOfFoe: run.first,
-                wasLater: Boolean(run.later[card.key]), momentum: run.momentum, played: run.played };
+            const mine = item && item.key === card.key ? item : null;
+            const t = { seen: mine ? mine.seen.size : 0, total: card.photos.length, firstOfFoe: run.first,
+                wasLater: Boolean(run.later[card.key]), played: run.played, details: Boolean(mine && mine.lit.has("details")) };
             if (t.wasLater) say(line("revisit_1"));
             run.first = false;
-            const mult = run.momentum;
-            const xp = withMomentum(BASE_XP + trigger("verdict", t), mult);
-            run.momentum = Math.min(10, run.momentum + 1);
-            grant(xp, portraitEl);
+            // Looked closely = saw every photo (or there was only one), or zoomed, or read the details.
+            run.items = (run.items || 0) + 1;
+            if (t.total <= 1 || t.seen >= t.total || (mine && (mine.lit.has("viewer") || mine.lit.has("details")))) run.close = (run.close || 0) + 1;
+            if (traitHere(card.group.groupId) === "glimmer" && t.total > 1 && t.seen >= t.total) { run.scrap += 5; floatAt($("gScrap"), "+5 shards", "g-f-xp"); }
+            grant(BASE_XP + trigger("verdict", t), portraitEl);
         }
         if (V.groupDone(ctx.cards, ctx.decisions, ctx.actions, card.group.groupId)) defeat(card.group);
         saveRun(); saveMeta();
@@ -1177,9 +1399,13 @@
     });
     function fireAction(kind) {
         if (!meta.on || !run || !item) return;
-        const mult = run.momentum;
+        if (!run.scored[item.key]) {
+            const tr = run.foe ? traitHere(run.foe) : null;
+            if (kind === "check") { if (item.checks < 2) { item.checks++; earnLight(1); } }
+            else if (!item.lit.has(kind)) { item.lit.add(kind); earnLight(1 + (kind === "viewer" && tr === "restless" ? 1 : 0)); }
+        }
         const xp = trigger(kind, {});
-        if (xp) grant(withMomentum(xp, mult), portraitEl);
+        if (xp) grant(xp, portraitEl);
         renderHand(); renderMe(); saveRun();
     }
     document.addEventListener("vinder:inspect", e => {
@@ -1189,7 +1415,12 @@
         const before = item.seen.size;
         item.seen.add(d.src);
         if (d.viewer) fireAction("viewer");
-        else if (item.seen.size > before && before > 0) sfx("flip");
+        else if (item.seen.size > before && before > 0) {
+            sfx("flip");
+            // A new photo flipped to (not the one shown first) earns Light; Shy foes give more for the first.
+            if (!run.scored[item.key]) earnLight(1 + (!item.lit.has("flip") && traitHere(run.foe) === "shy" ? 1 : 0));
+            item.lit.add("flip");
+        }
     });
     document.addEventListener("vinder:details", () => fireAction("details"));
     document.addEventListener("vinder:check", () => fireAction("check"));

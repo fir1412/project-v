@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 3";
+    const APP_VERSION = "2026-11-03 · Pale Moon 4";
 
     let dbPromise = null;
     function db() {
@@ -281,13 +281,23 @@
         S.overrides = st.overrides || {};
         S.translations = st.translations || {};
         S.photoIndex = 0;
+        S.pref = null;
         applyActions();
         emit("pack", S);
         show(screen || "deck");
         maybeCoach();
     }
 
-    const queue = () => V.remainingCards(S.cards, S.decisions, S.actions).filter(c => !V.isDecided(S.actions, S.decisions[c.key]));
+    // The game layer may ask for a group to go first (the path the player chose); everything else keeps its order.
+    const queue = () => {
+        const q = V.remainingCards(S.cards, S.decisions, S.actions).filter(c => !V.isDecided(S.actions, S.decisions[c.key]));
+        if (!S.pref) return q;
+        return [...q.filter(c => String(c.group.groupId) === S.pref), ...q.filter(c => String(c.group.groupId) !== S.pref)];
+    };
+    document.addEventListener("vinder:prefer", e => {
+        S.pref = e.detail || null;
+        if (!$("deck").hidden) renderDeck();
+    });
 
     function renderProgress() {
         const p = V.progress(S.cards, S.decisions, S.actions);
