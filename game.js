@@ -148,7 +148,8 @@
         get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode: progress lives for this visit only */ } }
     };
-    const meta = Object.assign({ on: true, music: true, sfx: true, voice: true, vol: 0.7, xp: 0, runs: 0, foes: 0, verdicts: 0 }, store.get("vinderGameMeta", {}));
+    const meta = Object.assign({ on: true, music: true, sfx: true, voice: true, mute: false, vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
+        store.get("vinderGameMeta", {}));
     const saveMeta = () => store.set("vinderGameMeta", meta);
     const runKey = id => `vinderGameRun:${id}`;
     let ctx = null, run = null, item = null, screen = "home", holdUntil = 0;
@@ -196,9 +197,10 @@
             A.ctx = new C();
             const comp = A.ctx.createDynamicsCompressor();
             comp.connect(A.ctx.destination);
-            A.master = A.ctx.createGain(); A.master.gain.value = meta.vol; A.master.connect(comp);
-            A.music = A.ctx.createGain(); A.music.gain.value = 0.5; A.music.connect(A.master);
-            A.sfx = A.ctx.createGain(); A.sfx.gain.value = 0.9; A.sfx.connect(A.master);
+            A.master = A.ctx.createGain(); A.master.connect(comp);
+            A.music = A.ctx.createGain(); A.music.connect(A.master);
+            A.sfx = A.ctx.createGain(); A.sfx.connect(A.master);
+            levels();
             const len = A.ctx.sampleRate;
             A.noise = A.ctx.createBuffer(1, len, len);
             const d = A.noise.getChannelData(0);
@@ -206,6 +208,13 @@
         }
         if (A.ctx.state === "suspended" && !document.hidden) A.ctx.resume().catch(() => {});
         return A.ctx;
+    }
+    // Mute silences everything at the master; each channel keeps its own level.
+    function levels() {
+        if (!A.ctx) return;
+        A.master.gain.value = meta.mute ? 0 : meta.vol;
+        A.music.gain.value = meta.musicVol;
+        A.sfx.gain.value = meta.sfxVol;
     }
     const mf = m => 440 * Math.pow(2, (m - 69) / 12);
     function tone(dest, t, f, dur, type, vol, attack, glide, cutoff) {
@@ -275,7 +284,7 @@
         }
     }
     function setMood(m) {
-        if (!meta.on || !meta.music || document.hidden) m = null;
+        if (!meta.on || !meta.music || meta.mute || document.hidden) m = null;
         if (m === A.mood && (m === null || A.timer)) return;
         A.mood = m;
         if (!m) { clearInterval(A.timer); A.timer = 0; return; }
@@ -291,7 +300,7 @@
     }
 
     function sfx(name) {
-        if (!meta.on || !meta.sfx || !audio()) return;
+        if (!meta.on || !meta.sfx || meta.mute || !audio()) return;
         const t = A.ctx.currentTime + 0.01, o = A.sfx;
         switch (name) {
         case "hit": noise(o, t, 0.14, 0.5, "bandpass", 1600); tone(o, t, 140, 0.18, "sine", 0.6, 0.002, 45); break;
@@ -328,16 +337,16 @@
         sub.classList.remove("g-sub-in"); void sub.offsetWidth; sub.classList.add("g-sub-in");
         clearTimeout(subTimer);
         subTimer = setTimeout(() => { sub.hidden = true; }, 1800 + text.length * 55);
-        if (!meta.voice || !root.speechSynthesis || typeof root.SpeechSynthesisUtterance !== "function") return;
+        if (meta.mute || !meta.voice || !root.speechSynthesis || typeof root.SpeechSynthesisUtterance !== "function") return;
         try {
             root.speechSynthesis.cancel();
             const u = new root.SpeechSynthesisUtterance(text);
             const v = voice();
             if (v) u.voice = v;
-            u.rate = 0.95; u.pitch = 0.82; u.volume = Math.min(1, meta.vol + 0.2);
+            u.rate = 0.95; u.pitch = 0.82; u.volume = Math.min(1, meta.vol * meta.voiceVol);
             const duck = to => { if (A.music) A.music.gain.setTargetAtTime(to, A.ctx.currentTime, 0.15); };
-            u.onstart = () => duck(0.16);
-            u.onend = u.onerror = () => duck(0.5);
+            u.onstart = () => duck(meta.musicVol * 0.3);
+            u.onend = u.onerror = () => duck(meta.musicVol);
             root.speechSynthesis.speak(u);
         } catch (_) { /* subtitles still show */ }
     }
@@ -421,7 +430,12 @@
     const hud = h("div", "g-hud");
     hud.id = "gHud";
     hud.innerHTML = `
-        <button type="button" class="g-route-strip" id="gStrip" aria-label="Open the route map"></button>
+        <div class="g-top">
+            <button type="button" class="g-route-strip" id="gStrip" aria-label="Open the route map"></button>
+            <button type="button" class="g-mute" id="gMute" aria-label="Mute all sound" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="g-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="g-x" d="M16 9l6 6M22 9l-6 6"/></svg>
+            </button>
+        </div>
         <div class="g-foe">
             <div class="g-portrait" id="gPortrait"><span class="g-slash"></span></div>
             <div class="g-foe-info">
@@ -787,12 +801,20 @@
         toggle("music", "Music");
         toggle("sfx", "Sound effects");
         toggle("voice", "Narrator voice");
-        const vl = h("label", "g-opt g-vol");
-        const vi = h("input");
-        vi.type = "range"; vi.min = "0"; vi.max = "1"; vi.step = "0.05"; vi.value = String(meta.vol);
-        vi.addEventListener("input", () => { meta.vol = Number(vi.value); if (A.master) A.master.gain.value = meta.vol; saveMeta(); });
-        vl.append(h("span", "", "Volume"), vi);
-        opts.appendChild(vl);
+        toggle("mute", "Mute everything");
+        const slider = (key, label, onSet) => {
+            const vl = h("label", "g-opt g-vol");
+            const vi = h("input");
+            vi.type = "range"; vi.min = "0"; vi.max = "1"; vi.step = "0.05"; vi.value = String(meta[key]);
+            vi.addEventListener("input", () => { meta[key] = Number(vi.value); levels(); saveMeta(); });
+            if (onSet) vi.addEventListener("change", onSet);
+            vl.append(h("span", "", label), vi);
+            opts.appendChild(vl);
+        };
+        slider("vol", "Master");
+        slider("musicVol", "Music");
+        slider("sfxVol", "Effects", () => sfx("hit"));
+        slider("voiceVol", "Narrator");
         body.appendChild(opts);
         body.appendChild(h("h3", "g-h3", "Card collection"));
         const grid = h("div", "g-collection");
@@ -813,7 +835,12 @@
     function apply() {
         document.body.classList.toggle("game-on", meta.on);
         tagline.hidden = !meta.on;
-        if (!meta.on) { setMood(null); try { root.speechSynthesis && root.speechSynthesis.cancel(); } catch (_) { /* fine */ } sub.hidden = true; }
+        levels();
+        const mute = $("gMute");
+        mute.setAttribute("aria-pressed", String(meta.mute));
+        mute.setAttribute("aria-label", meta.mute ? "Turn sound on" : "Mute all sound");
+        if (!meta.on || meta.mute) { try { root.speechSynthesis && root.speechSynthesis.cancel(); } catch (_) { /* fine */ } }
+        if (!meta.on) { setMood(null); sub.hidden = true; }
         else mood();
         renderHud();
     }
@@ -1036,6 +1063,7 @@
 
     $("gStrip").addEventListener("click", () => { if (ctx) { sfx("ui"); enqueue(mapOverlay); } });
     $("gMe").addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
+    $("gMute").addEventListener("click", () => { meta.mute = !meta.mute; saveMeta(); apply(); sfx("ui"); });
     // Browsers only start sound after a tap; any tap brings the music back.
     document.addEventListener("pointerdown", () => { if (meta.on && (meta.music || meta.sfx)) { audio(); mood(); } }, true);
     document.addEventListener("visibilitychange", () => {

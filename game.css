@@ -37,7 +37,15 @@ body.game-on .card { box-shadow: 0 0 0 2px rgba(233, 196, 106, .35), 0 18px 40px
     background: linear-gradient(180deg, rgba(40, 33, 78, .92), rgba(20, 17, 38, .92));
     border: 1px solid #4a3f80; box-shadow: 0 0 0 1px rgba(233, 196, 106, .18) inset, 0 8px 24px rgba(0, 0, 0, .4); }
 .g-hud[hidden] { display: none; }
-.g-route-strip { display: flex; gap: 4px; justify-content: center; align-items: center; width: 100%; height: 14px; padding: 0; margin: 0 0 6px; border: 0; background: none; cursor: pointer; }
+.g-top { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
+.g-route-strip { flex: 1; display: flex; gap: 4px; justify-content: center; align-items: center; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.g-mute { flex: none; width: 32px; height: 32px; margin: -4px -2px -4px 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(12, 10, 24, .55); color: #e9c46a; cursor: pointer; }
+.g-mute:active { transform: scale(.9); }
+.g-mute svg { width: 18px; height: 18px; }
+.g-mute .g-x { display: none; }
+.g-mute[aria-pressed="true"] { color: #8b84b0; }
+.g-mute[aria-pressed="true"] .g-wave { display: none; }
+.g-mute[aria-pressed="true"] .g-x { display: inline; }
 .g-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a3366; transition: transform .2s; }
 .g-dot-elite { background: #6e4a2a; border-radius: 2px; transform: rotate(45deg); }
 .g-dot-boss { width: 11px; height: 11px; background: #8a6a1e; }
