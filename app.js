@@ -147,7 +147,7 @@
             const r = V.readPack(pack);
             if (!r.ok) { toast(r.errors[0], 4000); return; }
             await put("packs", { packId: pack.packId, pack, openedAt: Date.now() });
-            if (!(await get("state", pack.packId))) await put("state", { packId: pack.packId, decisions: {}, history: [], sentAt: null });
+            if (!(await get("state", pack.packId))) await put("state", { packId: pack.packId, decisions: V.presetDecisions(r.cards, r.actions, pack.createdAt), history: [], sentAt: null });
             let coached = true;
             try { coached = Boolean(localStorage.getItem("vinderCoached")); } catch (_) { /* fine */ }
             if (coached) toast(`Pack loaded: ${r.cards.length} cards. It's on this phone now - works offline.`);
@@ -275,7 +275,7 @@
 
         const info = el("div", "card-info");
         const title = el("div", "card-title");
-        title.appendChild(el("h2", "", data.item.title || "(no title)"));
+        title.appendChild(el("h2", "", V.itemTitle(data, S.checks) || "(no title)"));
         const more = el("button", "info-btn");
         more.type = "button";
         more.setAttribute("aria-label", "Details");
@@ -302,8 +302,15 @@
         if (data.photos.length) chips.appendChild(el("span", "chip", `${data.photos.length} photo${data.photos.length === 1 ? "" : "s"}`));
         const movedHere = V.movesList(S.moves).filter(m => m.groupId === data.group.groupId && (m.from === data.item.itemIndex || m.to === data.item.itemIndex)).length;
         if (movedHere) chips.appendChild(el("span", "chip moved", `${movedHere} photo move${movedHere === 1 ? "" : "s"}`));
+        if (data.group.flag && data.group.flag.text) chips.appendChild(el("span", "chip check", String(data.group.flag.text)));
         const toCheck = V.fieldsToCheck(data.group, S.checks).length;
-        if (toCheck) chips.appendChild(el("span", "chip check", `${data.group.fieldsChip || "To check"}: ${toCheck}`));
+        if (toCheck) {
+            const chip = el("button", "chip check", `${data.group.fieldsChip || "To check"}: ${toCheck}`);
+            chip.type = "button";
+            chip.addEventListener("pointerdown", e => e.stopPropagation());
+            chip.addEventListener("click", e => { e.stopPropagation(); openSheet(data); });
+            chips.appendChild(chip);
+        }
         const same = S.cards.filter(c => c.group.groupId === data.group.groupId);
         const pos = same.indexOf(data) + 1;
         info.append(title, chips, el("div", "card-sub", [data.group.title, data.group.subtitle, same.length > 1 ? `${pos} of ${same.length}` : ""].filter(Boolean).join(" · ")));
@@ -472,7 +479,7 @@
 
     function itemTitle(group, index) {
         const card = S.cards.find(c => c.group.groupId === group.groupId && c.item.itemIndex === index);
-        return card ? (card.item.title || `#${index + 1}`) : `#${index + 1}`;
+        return card ? (V.itemTitle(card, S.checks) || `#${index + 1}`) : `#${index + 1}`;
     }
     function moveText(m) {
         const labels = (S.pack && S.pack.moveLabels) || {};
@@ -889,9 +896,11 @@
     loadAiKey();
 
     function openSheet(data) {
-        $("sheetTitle").textContent = data.item.title || "";
+        $("sheetTitle").textContent = V.itemTitle(data, S.checks) || "";
         const body = $("sheetBody");
         body.replaceChildren();
+        renderItemValues(body, data);
+        renderFields(body, data);
         const kv = el("dl", "kv");
         if (data.item.suggestion) {
             kv.append(el("dt", "", S.pack.suggestionTitle || "Suggested"), el("dd", "", (S.pack.suggestionLabels && S.pack.suggestionLabels[data.item.suggestion]) || labelOf(data.item.suggestion)));
@@ -903,7 +912,6 @@
             body.appendChild(el("p", "note-text", data.item.notes));
         }
         if (data.item.footnote) body.appendChild(el("p", "note-text", data.item.footnote));
-        renderFields(body, data);
         const attachments = (Array.isArray(data.group.attachments) ? data.group.attachments : []).filter(a => a && typeof a.src === "string" && a.src.startsWith("data:image/"));
         if (attachments.length) {
             body.appendChild(el("h3", "", data.group.attachmentsTitle || "Attachments"));
@@ -940,6 +948,50 @@
         $("sheet").hidden = false;
         $("sheetClose").focus();
     }
+    let datalistSeq = 0;
+    function renderItemValues(body, data) {
+        const defs = (Array.isArray(S.pack.itemFields) ? S.pack.itemFields : []).filter(d => d && d.id);
+        if (!defs.length || !data.item.values) return;
+        body.appendChild(el("h3", "", S.pack.itemFieldsTitle || "Correct this card"));
+        const box = el("div", "item-values");
+        for (const d of defs) {
+            const check = V.fieldCheckOf(S.checks, data.group.groupId, d.id, data.item.itemIndex);
+            const row = el("div", `item-value${check ? " checked" : ""}`);
+            const id = `iv-${++datalistSeq}`;
+            const label = el("label", "field-label", d.label || d.id);
+            label.htmlFor = id;
+            const input = document.createElement("input");
+            input.id = id;
+            input.className = "field-input";
+            input.value = V.itemValue(S.checks, data, d.id);
+            input.autocomplete = "off";
+            const options = S.pack.options && Array.isArray(S.pack.options[d.options]) ? S.pack.options[d.options] : [];
+            if (options.length) {
+                const list = document.createElement("datalist");
+                list.id = `${id}-list`;
+                for (const o of options.slice(0, 1500)) { const opt = document.createElement("option"); opt.value = String(o); list.appendChild(opt); }
+                input.setAttribute("list", list.id);
+                row.appendChild(list);
+            }
+            const ok = el("button", "viewer-pill field-ok", check ? "Undo" : "OK");
+            ok.type = "button";
+            ok.addEventListener("click", async () => {
+                const original = String((data.item.values && data.item.values[d.id]) ?? "").trim();
+                const value = input.value.trim();
+                S.checks = V.setFieldCheck(S.checks, { groupId: data.group.groupId, fieldId: d.id, itemIndex: data.item.itemIndex, value: check || value === original ? null : value });
+                await saveState();
+                buzz(8);
+                openSheet(data);
+            });
+            const line = el("div", "field-line");
+            line.append(input, ok);
+            row.append(label, line);
+            if (check) row.appendChild(el("small", "field-note", `Was: ${String((data.item.values || {})[d.id] || "(blank)")}`));
+            box.appendChild(row);
+        }
+        body.appendChild(box);
+    }
+
     const FIELD_STATUS = { done: "Confirmed", ok: "Auto-verified", check: "Check" };
     function renderFields(body, data) {
         const g = data.group;
@@ -999,122 +1051,118 @@
     $("sheetClose").addEventListener("click", closeSheet);
     $("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
 
+    function openPicker(title, options, current, onPick) {
+        const body = $("moveBody");
+        body.replaceChildren();
+        for (const o of options) {
+            const b = el("button", `move-opt${o.value === current ? " on" : ""}`);
+            b.type = "button";
+            const label = el("span", "", o.label);
+            if (o.color) { label.classList.add("opt-dot"); label.style.setProperty("--c", o.color); }
+            b.appendChild(label);
+            if (o.sub) b.appendChild(el("small", "", o.sub));
+            b.addEventListener("click", async () => { $("moveSheet").hidden = true; await onPick(o.value); });
+            body.appendChild(b);
+        }
+        $("moveTitle").textContent = title;
+        $("moveSheet").hidden = false;
+    }
+
+    function changeLine(text, onUndo) {
+        const line = el("div", "change");
+        line.appendChild(el("span", "change-text", text));
+        const x = el("button", "icon-btn change-x");
+        x.type = "button";
+        x.setAttribute("aria-label", `Undo: ${text}`);
+        x.appendChild(svgIcon("M6 6l12 12M18 6 6 18"));
+        x.addEventListener("click", async () => { await onUndo(); await saveState(); renderReview(); });
+        line.appendChild(x);
+        return line;
+    }
+
     function renderReview() {
         const counts = {};
         for (const c of S.cards) {
             const id = S.decisions[c.key] ? S.decisions[c.key].action : "";
             counts[id] = (counts[id] || 0) + 1;
         }
-        const summary = $("reviewSummary");
-        summary.replaceChildren(...Object.entries(counts).map(([id, n]) => {
+        $("reviewSummary").replaceChildren(...Object.entries(counts).map(([id, n]) => {
             const pill = el("span", "pill", `${id ? labelOf(id) : "Open"} ${n}`);
             if (id) pill.style.setProperty("--c", colorOf(id));
             return pill;
         }));
         const list = $("reviewList");
         list.replaceChildren();
+        const moves = V.movesList(S.moves);
+        const checks = V.fieldChecksList(S.checks);
         const byGroup = new Map();
         for (const c of S.cards) {
             if (!byGroup.has(c.group.groupId)) byGroup.set(c.group.groupId, []);
             byGroup.get(c.group.groupId).push(c);
         }
-        for (const [, cards] of byGroup) {
-            const group = el("section", "grp");
+        const itemDefs = Array.isArray(S.pack.itemFields) ? S.pack.itemFields : [];
+        for (const [gid, cards] of byGroup) {
+            const g = cards[0].group;
+            const sec = el("section", "grp");
             const head = el("div", "grp-head");
-            head.append(el("span", "", cards[0].group.title || ""), el("small", "", cards[0].group.subtitle || ""));
-            group.appendChild(head);
+            const ht = el("div", "grp-title");
+            ht.append(el("span", "", g.title || ""), el("small", "", g.subtitle || ""));
+            head.appendChild(ht);
+            if (g.flag && g.flag.text) head.appendChild(el("span", "grp-flag", String(g.flag.text)));
+            sec.appendChild(head);
             for (const c of cards) {
                 const row = el("div", "row");
                 const thumb = el("img", "row-thumb");
                 thumb.alt = "";
                 if (c.photos[0]) thumb.src = c.photos[0].src;
-                const text = el("div", "row-text", c.item.title || "");
+                const title = V.itemTitle(c, S.checks) || "";
+                const text = el("div", "row-text");
+                text.appendChild(el("span", "row-title", title));
                 const sub = [c.item.suggestion ? `${S.pack.suggestionTitle || "Suggested"}: ${(S.pack.suggestionLabels && S.pack.suggestionLabels[c.item.suggestion]) || labelOf(c.item.suggestion)}` : "", ...(c.item.chips || [])].filter(Boolean).join(" · ");
                 if (sub) text.appendChild(el("small", "", sub));
-                const select = document.createElement("select");
-                select.setAttribute("aria-label", `Decision for ${c.item.title || "this card"}`);
                 const cur = S.decisions[c.key] ? S.decisions[c.key].action : "";
-                const open = el("option", "", "Open");
-                open.value = "";
-                select.appendChild(open);
-                for (const dir of V.DIRECTIONS) {
-                    const o = el("option", "", S.actions[dir].label);
-                    o.value = S.actions[dir].id;
-                    if (o.value === cur) o.selected = true;
-                    select.appendChild(o);
+                const btn = el("button", `verdict-btn${cur ? "" : " open"}`, cur ? labelOf(cur) : "Open");
+                btn.type = "button";
+                btn.setAttribute("aria-label", `Decision for ${title}: ${cur ? labelOf(cur) : "open"}`);
+                if (cur) btn.style.setProperty("--c", colorOf(cur));
+                btn.addEventListener("click", () => openPicker(title,
+                    [...V.DIRECTIONS.map(d => ({ label: S.actions[d].label, value: S.actions[d].id, color: S.actions[d].color })), { label: "Open (not decided)", value: "" }],
+                    cur, async value => {
+                        if (!value) { const next = { ...S.decisions }; delete next[c.key]; S.decisions = next; }
+                        else S.decisions = V.decide(S.decisions, S.history, c, value, S.actions).decisions;
+                        await saveState();
+                        renderReview();
+                    }));
+                row.append(thumb, text, btn);
+                sec.appendChild(row);
+            }
+            const gm = moves.filter(m => m.groupId === gid);
+            const gc = checks.filter(x => x.groupId === gid);
+            if (gm.length || gc.length) {
+                const det = el("details", "changes");
+                const parts = [gm.length ? `${gm.length} photo move${gm.length === 1 ? "" : "s"}` : "", gc.length ? `${gc.length} value${gc.length === 1 ? "" : "s"} checked` : ""].filter(Boolean);
+                det.appendChild(el("summary", "", parts.join(" · ")));
+                for (const m of gm) {
+                    const att = (Array.isArray(g.attachments) ? g.attachments : []).find(a => String(a.id) === m.photoId);
+                    det.appendChild(changeLine(`${m.from === null ? ((att && att.title) || "Photo") : `Photo of ${itemTitle(g, m.from)}`} → ${moveText(m)}`,
+                        async () => { S.moves = V.setMove(S.moves, { groupId: m.groupId, photoId: m.photoId, from: m.from, to: null }); }));
                 }
-                select.addEventListener("change", async () => {
-                    if (!select.value) {
-                        const next = { ...S.decisions };
-                        delete next[c.key];
-                        S.decisions = next;
+                for (const x of gc) {
+                    let label = x.fieldId;
+                    let was = "";
+                    if (x.itemIndex === null || x.itemIndex === undefined) {
+                        const f = (Array.isArray(g.fields) ? g.fields : []).find(y => y.id === x.fieldId);
+                        if (f) { label = f.label || f.id; was = String(f.value || "").trim(); }
                     } else {
-                        S.decisions = V.decide(S.decisions, S.history, c, select.value, S.actions).decisions;
+                        const d = itemDefs.find(y => y.id === x.fieldId);
+                        const card = cards.find(y => y.item.itemIndex === x.itemIndex);
+                        label = `${card ? (card.item.titlePrefix || `#${x.itemIndex + 1}`) : `#${x.itemIndex + 1}`} ${d ? d.label : x.fieldId}`;
+                        was = card && card.item.values ? String(card.item.values[x.fieldId] || "") : "";
                     }
-                    await saveState();
-                    renderReview();
-                });
-                row.append(thumb, text, select);
-                group.appendChild(row);
-            }
-            list.appendChild(group);
-        }
-        const moves = V.movesList(S.moves);
-        if (moves.length) {
-            const sec = el("section", "grp");
-            const head = el("div", "grp-head");
-            head.append(el("span", "", "Photo moves"), el("small", "", String(moves.length)));
-            sec.appendChild(head);
-            for (const m of moves) {
-                const groupCard = S.cards.find(c => c.group.groupId === m.groupId);
-                const g = groupCard ? groupCard.group : { groupId: m.groupId };
-                const found = S.cards.flatMap(c => c.group.groupId === m.groupId ? c.photos : []).find(p => String(p.id) === m.photoId) ||
-                    (Array.isArray(g.attachments) ? g.attachments : []).find(a => String(a.id) === m.photoId) || {};
-                const row = el("div", "row");
-                const thumb = el("img", "row-thumb");
-                thumb.alt = "";
-                if (found.src) thumb.src = found.src;
-                const text = el("div", "row-text", `${m.from === null ? (found.title || "Photo") : itemTitle(g, m.from)} → ${moveText(m)}`);
-                text.appendChild(el("small", "", g.title || ""));
-                const undo = el("button", "icon-btn");
-                undo.type = "button";
-                undo.setAttribute("aria-label", "Undo this move");
-                undo.appendChild(svgIcon("M6 6l12 12M18 6 6 18"));
-                undo.addEventListener("click", async () => {
-                    S.moves = V.setMove(S.moves, { groupId: m.groupId, photoId: m.photoId, from: m.from, to: null });
-                    await saveState();
-                    renderReview();
-                });
-                row.append(thumb, text, undo);
-                sec.appendChild(row);
-            }
-            list.appendChild(sec);
-        }
-        const checks = V.fieldChecksList(S.checks);
-        if (checks.length) {
-            const sec = el("section", "grp");
-            const head = el("div", "grp-head");
-            head.append(el("span", "", "Checked values"), el("small", "", String(checks.length)));
-            sec.appendChild(head);
-            for (const c of checks) {
-                const groupCard = S.cards.find(x => x.group.groupId === c.groupId);
-                const g = groupCard ? groupCard.group : { groupId: c.groupId };
-                const f = (Array.isArray(g.fields) ? g.fields : []).find(x => x.id === c.fieldId) || { label: c.fieldId, value: "" };
-                const row = el("div", "row");
-                const changed = String(f.value || "").trim() !== c.value;
-                const text = el("div", "row-text", `${f.label || c.fieldId}: ${c.value || "(blank)"}`);
-                text.appendChild(el("small", "", [g.title || "", changed ? `was ${f.value || "(blank)"}` : "OK as read"].filter(Boolean).join(" · ")));
-                const undo = el("button", "icon-btn");
-                undo.type = "button";
-                undo.setAttribute("aria-label", "Undo this check");
-                undo.appendChild(svgIcon("M6 6l12 12M18 6 6 18"));
-                undo.addEventListener("click", async () => {
-                    S.checks = V.setFieldCheck(S.checks, { groupId: c.groupId, fieldId: c.fieldId, value: null });
-                    await saveState();
-                    renderReview();
-                });
-                row.append(text, undo);
-                sec.appendChild(row);
+                    det.appendChild(changeLine(`${label}: ${x.value || "(blank)"}${was && was !== x.value ? ` (was ${was})` : was === x.value ? " ✓" : ""}`,
+                        async () => { S.checks = V.setFieldCheck(S.checks, { groupId: x.groupId, fieldId: x.fieldId, itemIndex: x.itemIndex, value: null }); }));
+                }
+                sec.appendChild(det);
             }
             list.appendChild(sec);
         }

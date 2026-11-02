@@ -86,6 +86,15 @@
         return { decisions: next, history: [...history, { key: card.key, previous: decisions[card.key] || null }] };
     }
 
+    function presetDecisions(cards, actions, at) {
+        const out = {};
+        for (const c of cards) {
+            const id = c.item && c.item.decided;
+            if (id && DIRECTIONS.some(d => actions[d].id === id)) out[c.key] = { action: id, decidedAt: at || new Date().toISOString(), preset: true };
+        }
+        return out;
+    }
+
     function undo(decisions, history) {
         if (!history.length) return { decisions, history, key: null };
         const last = history[history.length - 1];
@@ -127,15 +136,25 @@
     const moveOf = (moves, groupId, photoId) => (moves && moves[moveKey(groupId, photoId)]) || null;
     const movesList = moves => Object.values(moves || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
 
-    const fieldKey = (groupId, fieldId) => `${groupId}|${fieldId}`;
-    function setFieldCheck(checks, { groupId, fieldId, value, at }) {
+    const fieldKey = (groupId, fieldId, itemIndex = null) => `${groupId}|${itemIndex === null || itemIndex === undefined ? "" : itemIndex}|${fieldId}`;
+    function setFieldCheck(checks, { groupId, fieldId, value, at, itemIndex = null }) {
         const next = { ...checks };
-        const key = fieldKey(groupId, fieldId);
+        const key = fieldKey(groupId, fieldId, itemIndex);
         if (value === undefined || value === null) delete next[key];
-        else next[key] = { groupId: String(groupId), fieldId: String(fieldId), value: String(value).trim(), at: at || new Date().toISOString() };
+        else next[key] = { groupId: String(groupId), itemIndex: itemIndex === null || itemIndex === undefined ? null : Number(itemIndex), fieldId: String(fieldId), value: String(value).trim(), at: at || new Date().toISOString() };
         return next;
     }
-    const fieldCheckOf = (checks, groupId, fieldId) => (checks && checks[fieldKey(groupId, fieldId)]) || null;
+    const fieldCheckOf = (checks, groupId, fieldId, itemIndex = null) => (checks && checks[fieldKey(groupId, fieldId, itemIndex)]) || null;
+    const itemValue = (checks, card, fieldId) => {
+        const c = fieldCheckOf(checks, card.group.groupId, fieldId, card.item.itemIndex);
+        return c ? c.value : String((card.item.values && card.item.values[fieldId]) ?? "");
+    };
+    function itemTitle(card, checks) {
+        const item = card.item;
+        const keys = Array.isArray(item.titleFields) ? item.titleFields : [];
+        if (!keys.length || !keys.some(k => fieldCheckOf(checks, card.group.groupId, k, item.itemIndex))) return item.title || "";
+        return [item.titlePrefix, keys.map(k => itemValue(checks, card, k) || "?").join(" · ")].filter(Boolean).join(" ");
+    }
     const fieldChecksList = checks => Object.values(checks || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
     const fieldsToCheck = (group, checks) => (Array.isArray(group && group.fields) ? group.fields : [])
         .filter(f => f && f.status === "check" && !fieldCheckOf(checks, group.groupId, f.id));
@@ -154,11 +173,11 @@
                 decidedAt: decisions[c.key].decidedAt
             })),
             moves: movesList(moves).map(m => ({ groupId: m.groupId, photoId: m.photoId, from: m.from, to: m.to, movedAt: m.at })),
-            fields: fieldChecksList(checks).map(f => ({ groupId: f.groupId, fieldId: f.fieldId, value: f.value, checkedAt: f.at }))
+            fields: fieldChecksList(checks).map(f => ({ groupId: f.groupId, itemIndex: f.itemIndex ?? null, fieldId: f.fieldId, value: f.value, checkedAt: f.at }))
         };
     }
 
-    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck };
+    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, presetDecisions, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck, itemValue, itemTitle };
     root.VINderCore = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

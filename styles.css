@@ -253,3 +253,29 @@ button { font: inherit; color: inherit; }
 .field-input { flex: 1; min-width: 0; min-height: 44px; border-radius: 10px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; padding: 0 10px; }
 .field-ok { border-color: var(--border-input); background: transparent; color: var(--text); }
 .field-note { color: var(--text-muted); font-size: 12.5px; }
+
+.grp-head { align-items: center; }
+.grp-title { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.grp-title span, .grp-title small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grp-flag { flex: none; max-width: 45%; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #fde68a; color: #713f12; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row { padding: 8px 10px; gap: 10px; }
+.row-text { display: flex; flex-direction: column; gap: 2px; }
+.row-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; overflow-wrap: anywhere; }
+.row-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.verdict-btn { flex: none; max-width: 7.5rem; min-height: 40px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--c, var(--skip)); color: var(--on-verdict);
+    font: inherit; font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+.verdict-btn.open { background: transparent; color: var(--text-muted); border: 1.5px dashed var(--border-input); }
+.changes { border-top: 1px solid var(--border); padding: 4px 14px 6px; font-size: 13.5px; }
+.changes summary { cursor: pointer; color: var(--text-muted); font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.change { display: flex; align-items: center; gap: 6px; }
+.change-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.change-x { width: 40px; height: 40px; }
+.change-x svg { width: 18px; height: 18px; }
+.opt-dot { display: inline-flex; align-items: center; gap: 8px; }
+.opt-dot::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
+.item-values { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.item-value { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+.item-value.checked { border-color: var(--within); }
+
+.review-list > .grp { flex: none; }
+.verdict-btn { max-width: 7rem; padding: 0 10px; font-size: 13px; }
