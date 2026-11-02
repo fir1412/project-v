@@ -131,3 +131,19 @@ console.log("cards ok");
     assert.deepStrictEqual(G.boonChoices(42), b);
 }
 console.log("story ok");
+
+// Photo moves really move: the photo leaves its card and shows on the new one, undo puts it back.
+{
+    const V = require("./vinder-core.js");
+    const group = { groupId: "g", attachments: [{ id: "f1", src: "x" }] };
+    const cs = [0, 1].map(i => ({ group, item: { itemIndex: i }, photos: [{ id: `p${i}`, src: "x" }] }));
+    let mv = V.setMove({}, { groupId: "g", photoId: "p0", from: 0, to: 1 });
+    mv = V.setMove(mv, { groupId: "g", photoId: "f1", from: null, to: 0 });
+    assert.deepStrictEqual(V.photosOf(cs[0], cs, mv).map(p => p.id), ["f1"]);
+    assert.deepStrictEqual(V.photosOf(cs[1], cs, mv).map(p => [p.id, p.origin]), [["p1", undefined], ["p0", 0]]);
+    mv = V.setMove(mv, { groupId: "g", photoId: "p0", from: 0, to: 0 });
+    assert.deepStrictEqual(V.photosOf(cs[0], cs, mv).map(p => p.id), ["p0", "f1"]);
+    mv = V.setMove(mv, { groupId: "g", photoId: "p1", from: 1, to: "none" });
+    assert.deepStrictEqual(V.photosOf(cs[1], cs, mv), []);
+}
+console.log("moves ok");

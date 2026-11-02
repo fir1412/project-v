@@ -9,6 +9,9 @@
         down: { id: "later", label: "Later", color: "#475569" }
     };
 
+    // A verdict outside the four swipes: send the claim back (transport damage reported after 2 business days).
+    const RETURN = { id: "return", label: "Return claim", color: "#b91c1c" };
+
     const itemKey = (groupId, itemIndex) => `${groupId}#${itemIndex}`;
 
     function actionsOf(pack) {
@@ -81,7 +84,7 @@
     }
 
     function decide(decisions, history, card, actionId, actions, at) {
-        if (!DIRECTIONS.some(d => actions[d].id === actionId)) throw new Error(`Unknown action ${actionId}`);
+        if (actionId !== RETURN.id && !DIRECTIONS.some(d => actions[d].id === actionId)) throw new Error(`Unknown action ${actionId}`);
         const next = { ...decisions, [card.key]: { action: actionId, decidedAt: at || new Date().toISOString() } };
         return { decisions: next, history: [...history, { key: card.key, previous: decisions[card.key] || null }] };
     }
@@ -135,6 +138,23 @@
     }
     const moveOf = (moves, groupId, photoId) => (moves && moves[moveKey(groupId, photoId)]) || null;
     const movesList = moves => Object.values(moves || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    // The photos a card shows once moves are applied: its own that stayed, then any moved in from
+    // other items or the group's attachments. Each moved-in photo keeps `origin` (its first home).
+    function photosOf(card, cards, moves) {
+        const gid = card.group.groupId, here = card.item.itemIndex;
+        const own = card.own || card.photos;
+        const stays = p => { const m = moveOf(moves, gid, String(p.id)); return !m || m.to === here; };
+        const out = own.filter(stays);
+        for (const c of cards) {
+            if (c === card || c.group.groupId !== gid) continue;
+            for (const p of c.own || c.photos) { const m = moveOf(moves, gid, String(p.id)); if (m && m.to === here) out.push({ ...p, origin: c.item.itemIndex }); }
+        }
+        for (const a of Array.isArray(card.group.attachments) ? card.group.attachments : []) {
+            const m = a && a.id !== undefined ? moveOf(moves, gid, String(a.id)) : null;
+            if (m && m.to === here && typeof a.src === "string") out.push({ ...a, origin: null });
+        }
+        return out;
+    }
 
     const fieldKey = (groupId, fieldId, itemIndex = null) => `${groupId}|${itemIndex === null || itemIndex === undefined ? "" : itemIndex}|${fieldId}`;
     function setFieldCheck(checks, { groupId, fieldId, value, at, itemIndex = null }) {
@@ -194,7 +214,7 @@
         };
     }
 
-    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, presetDecisions, setOverride, hasOverride, gateFor, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck, itemValue, itemTitle };
+    const api = { DIRECTIONS, DEFAULT_ACTIONS, RETURN, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, presetDecisions, setOverride, hasOverride, gateFor, moveKey, setMove, moveOf, movesList, photosOf, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck, itemValue, itemTitle };
     root.VINderCore = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

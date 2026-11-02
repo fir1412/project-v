@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 15";
+    const APP_VERSION = "2026-11-03 · Pale Moon 16";
 
     let dbPromise = null;
     function db() {
@@ -37,7 +37,7 @@
     const del = (name, key) => run(name, "readwrite", s => s.delete(key));
 
     const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {}, checks: {}, overrides: {}, translations: {} };
-    const actionById = id => Object.values(S.actions).find(a => a.id === id) || null;
+    const actionById = id => Object.values(S.actions).find(a => a.id === id) || (id === V.RETURN.id ? V.RETURN : null);
     const labelOf = id => (actionById(id) || { label: id }).label;
     const colorOf = id => (actionById(id) || { color: "" }).color;
 
@@ -284,6 +284,7 @@
         S.history = st.history || [];
         S.sentAt = st.sentAt || null;
         S.moves = st.moves || {};
+        applyMoves();
         S.checks = st.checks || {};
         S.overrides = st.overrides || {};
         S.translations = st.translations || {};
@@ -295,9 +296,50 @@
         maybeCoach();
     }
 
+    // Moves really move: every card shows the photos that belong to it now.
+    function applyMoves() {
+        for (const c of S.cards) if (!c.own) c.own = c.photos;
+        for (const c of S.cards) c.photos = V.photosOf(c, S.cards, S.moves);
+    }
+
     // The game layer may ask for a group to go first (the path the player chose); everything else keeps its order.
+    // The mark on the damage form ("the other side says"): its values, else its text.
+    const markOf = c => {
+        const h = c.item.hint;
+        if (!h) return "";
+        const ids = (Array.isArray(S.pack.itemFields) ? S.pack.itemFields : []).map(d => d && d.id).filter(Boolean);
+        return norm(ids.map(id => (h.values || {})[id] || "").filter(Boolean).join(" · ") || h.text || "");
+    };
+    let byMark = false;
+    try { byMark = localStorage.getItem("vinderByMark") === "1"; } catch (_) { /* fine */ }
+    // Within each vehicle, defects that share a form mark sit together; unmarked ones last. Vehicles keep their order.
+    const sortByMark = q => {
+        const order = new Map(S.cards.map((c, i) => [c, i]));
+        const groupAt = new Map();
+        S.cards.forEach((c, i) => { if (!groupAt.has(c.group.groupId)) groupAt.set(c.group.groupId, i); });
+        const firstOfMark = new Map();
+        for (const c of S.cards) { const k = `${c.group.groupId}|${markOf(c)}`; if (!firstOfMark.has(k)) firstOfMark.set(k, order.get(c)); }
+        const rank = c => { const m = markOf(c); return m ? firstOfMark.get(`${c.group.groupId}|${m}`) : Infinity; };
+        return [...q].sort((a, b) => groupAt.get(a.group.groupId) - groupAt.get(b.group.groupId) || rank(a) - rank(b) || order.get(a) - order.get(b));
+    };
+    const showByMark = () => {
+        const b = $("byMark");
+        b.setAttribute("aria-pressed", String(byMark));
+        b.classList.toggle("on", byMark);
+    };
+    $("byMark").addEventListener("click", () => {
+        byMark = !byMark;
+        try { localStorage.setItem("vinderByMark", byMark ? "1" : "0"); } catch (_) { /* fine */ }
+        showByMark();
+        toast(byMark ? "Grouped by form mark" : "Pack order");
+        S.photoIndex = 0;
+        renderDeck();
+    });
+    showByMark();
+
     const queue = () => {
-        const q = V.remainingCards(S.cards, S.decisions, S.actions).filter(c => !V.isDecided(S.actions, S.decisions[c.key]));
+        let q = V.remainingCards(S.cards, S.decisions, S.actions).filter(c => !V.isDecided(S.actions, S.decisions[c.key]));
+        if (byMark) q = sortByMark(q);
         if (!S.pref) return q;
         return [...q.filter(c => String(c.group.groupId) === S.pref), ...q.filter(c => String(c.group.groupId) !== S.pref)];
     };
@@ -483,7 +525,7 @@
                 if (data.photos.length && s.y - rect.top < rect.height * 0.62) {
                     if (data.photos.length > 1 && x < rect.width * 0.3) flipPhoto(card, data, -1);
                     else if (data.photos.length > 1 && x > rect.width * 0.7) flipPhoto(card, data, 1);
-                    else openViewer(data.photos.map(p => ({ ...p, title: data.photos.length > 1 ? "" : data.item.title, move: { group: data.group, photoId: String(p.id), from: data.item.itemIndex } })), S.photoIndex);
+                    else openViewer(data.photos.map(p => ({ ...p, title: data.photos.length > 1 ? "" : data.item.title, move: { group: data.group, photoId: String(p.id), from: "origin" in p ? p.origin : data.item.itemIndex } })), S.photoIndex);
                 }
                 return;
             }
@@ -687,6 +729,7 @@
         body.replaceChildren();
         const choose = async to => {
             S.moves = V.setMove(S.moves, { groupId: group.groupId, photoId, from, to });
+            applyMoves();
             await saveState();
             $("moveSheet").hidden = true;
             buzz(10);
@@ -702,8 +745,9 @@
             b.addEventListener("click", () => choose(to));
             body.appendChild(b);
         };
+        const here = current ? current.to : from;
         for (const c of S.cards.filter(x => x.group.groupId === group.groupId)) {
-            if (c.item.itemIndex === from) continue;
+            if (c.item.itemIndex === here) continue;
             option(c.item.title || `#${c.item.itemIndex + 1}`, c.item.itemIndex, from === null ? (labels.addTo || "Add to this item") : (labels.moveTo || "Move here"));
         }
         option(labels.newItem || "New item", "new", labels.newItemHint || "Starts a new item with this photo");
@@ -1140,6 +1184,18 @@
         $("sheetTitle").textContent = V.itemTitle(data, S.checks) || "";
         const body = $("sheetBody");
         body.replaceChildren();
+        const cur = S.decisions[data.key];
+        if (!cur || cur.action !== V.RETURN.id) {
+            const ret = el("button", "btn btn-block btn-return", "Return claim");
+            ret.type = "button";
+            ret.appendChild(el("small", "", "Transport damage reported after 2 business days"));
+            ret.addEventListener("click", () => {
+                $("sheet").hidden = true;
+                toast("Claim returned. Undo is on the left.");
+                record(data, V.RETURN.id);
+            });
+            body.appendChild(ret);
+        }
         renderItemValues(body, data);
         renderFields(body, data);
         const kv = el("dl", "kv");
@@ -1515,7 +1571,7 @@
                 btn.setAttribute("aria-label", `Decision for ${title}: ${cur ? labelOf(cur) : "open"}`);
                 if (cur) btn.style.setProperty("--c", colorOf(cur));
                 btn.addEventListener("click", () => openPicker(title,
-                    [...V.DIRECTIONS.map(d => ({ label: S.actions[d].label, value: S.actions[d].id, color: S.actions[d].color })), { label: "Open (not decided)", value: "" }],
+                    [...V.DIRECTIONS.map(d => ({ label: S.actions[d].label, value: S.actions[d].id, color: S.actions[d].color })), { label: V.RETURN.label, value: V.RETURN.id, color: V.RETURN.color }, { label: "Open (not decided)", value: "" }],
                     cur, async value => {
                         const apply = async () => {
                             if (!value) { const next = { ...S.decisions }; delete next[c.key]; S.decisions = next; }
@@ -1542,7 +1598,7 @@
                 for (const m of gm) {
                     const att = (Array.isArray(g.attachments) ? g.attachments : []).find(a => String(a.id) === m.photoId);
                     det.appendChild(changeLine(`${m.from === null ? ((att && att.title) || "Photo") : `Photo of ${itemTitle(g, m.from)}`} → ${moveText(m)}`,
-                        async () => { S.moves = V.setMove(S.moves, { groupId: m.groupId, photoId: m.photoId, from: m.from, to: null }); }));
+                        async () => { S.moves = V.setMove(S.moves, { groupId: m.groupId, photoId: m.photoId, from: m.from, to: null }); applyMoves(); }));
                 }
                 for (const x of gc) {
                     let label = x.fieldId;
