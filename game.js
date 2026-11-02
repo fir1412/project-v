@@ -432,8 +432,9 @@
         const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
         src.buffer = buf;
         src.loop = Boolean(opts && opts.loop);
+        if (opts && opts.rate) src.playbackRate.value = opts.rate;
         g.gain.value = opts && opts.gain !== undefined ? opts.gain : 1;
-        src.connect(g); g.connect(bus);
+        src.connect(g); g.connect(A[bus]);
         src.start();
         return { src, g };
     }
@@ -446,11 +447,34 @@
         A.track = null;
         if (old) { old.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.35); setTimeout(() => { try { old.src.stop(); } catch (_) { /* already stopped */ } }, 2500); }
         if (!m) return;
-        const t = await play(`${ART}audio/music/${m === "title" ? "theme" : m}.webm`, A.music, { loop: true, gain: 0 });
+        const t = await play(`${ART}${pickTrack(m)}`, "music", { gain: 0 });
         if (!t) return;
         if (A.mood !== m) { t.src.stop(); return; }
         t.g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.5);
         A.track = t;
+        // When a track ends, the next one comes from the same pool; nothing repeats until the pool is used up.
+        t.src.onended = () => { if (A.track === t) { A.track = null; A.mood = null; setMood(m); } };
+    }
+    // Music pools per mood and region (assets/audio/music2), with a no-repeat shuffle remembered across days.
+    let assetList = [];
+    fetch(`${ART}manifest.json`).then(r => r.json()).then(j => { assetList = j.files || []; }).catch(() => {});
+    const REGION_KEYS = ["road", "drowned", "orchard", "glass", "moonless"];
+    function pickTrack(m) {
+        if (m === "title") return "audio/music/theme.webm";
+        if (m === "camp") return "audio/music/camp.webm";
+        const act = run && run.foe && ctx ? actOf(run.foe) : 1;
+        const region = REGION_KEYS[act - 1] || "road";
+        const pool = assetList.filter(f => f.startsWith(`audio/music2/${m}-${region}-`));
+        const all = [...(act === 1 || !pool.length ? [`audio/music/${m}.webm`] : []), ...pool];
+        meta.heard = meta.heard || {};
+        const key = `${m}-${region}`;
+        let heard = (meta.heard[key] || []).filter(f => all.includes(f));
+        let fresh = all.filter(f => !heard.includes(f));
+        if (!fresh.length) { heard = []; fresh = all; }
+        const f = fresh[Math.floor(Math.random() * fresh.length)];
+        meta.heard[key] = [...heard, f];
+        saveMeta();
+        return f;
     }
     let moodOverride = null;
     function mood() {
@@ -465,9 +489,14 @@
     const SFX = { hit: "hit_x", crit: "crit_x", later: "later", flip: "flip", card: "card_x", draw: "draw_x", coin: "shards", defeat: "defeat_x",
         victory: "victory", level: "levelup", undo: "undo", ui: "ui_tap", confirm: "confirm", foe: "foe_enter", elite: "elite_enter", boss: "boss_enter",
         relic: "relic_x", upgrade: "upgrade", purchase: "purchase", burn: "burn", send: "send", map: "map_open", page: "page", rank: "rank" };
+    // Each sound picks one of its recorded variants, with a slight pitch and level change, so repeats never sound identical.
     function sfx(name, gain) {
         if (!meta.on || !meta.sfx || meta.mute || !SFX[name] || !audio()) return;
-        play(`${ART}audio/sfx/${SFX[name]}.webm`, A.sfx, { gain });
+        const base = SFX[name];
+        const variants = assetList.filter(f => f.startsWith(`audio/sfx/${base}_v`) || f.startsWith(`audio/sfx/${name}_v`));
+        const pickFrom = [`audio/sfx/${base}.webm`, ...variants];
+        const f = pickFrom[Math.floor(Math.random() * pickFrom.length)];
+        play(`${ART}${f}`, "sfx", { gain: (gain === undefined ? 1 : gain) * (0.88 + Math.random() * 0.12), rate: 0.94 + Math.random() * 0.12 });
     }
 
     // ---------- narration: Yui (ElevenLabs v4), Japanese subtitles with a tap for the other language ----------
@@ -550,7 +579,7 @@
         const marker = {};
         A.speaking = marker;
         levels();
-        play(`${ART}audio/voice/${l.id}.webm`, A.voice).then(v => {
+        play(`${ART}audio/voice/${l.id}.webm`, "voice").then(v => {
             if (!v || A.speaking !== marker) { if (v) v.src.stop(); if (A.speaking === marker) { A.speaking = null; levels(); } return; }
             if (A.voiceNow) { try { A.voiceNow.src.stop(); } catch (_) { /* done */ } }
             A.voiceNow = v;
@@ -1984,8 +2013,10 @@
     async function preload(progress) {
         let list = [];
         try { list = (await (await fetch(`${ART}manifest.json`)).json()).files || []; } catch (_) { return; }
-        const first = list.filter(f => !f.startsWith("audio/music/") || f.endsWith("/theme.webm"));
-        const later = list.filter(f => !first.includes(f));
+        // Big or optional files (the music2 pool, idle and hurt clips) load when first used, never up front.
+        const lazy = f => f.startsWith("audio/music2/") || f.startsWith("foes/anim/") || f.startsWith("foes/hurt/") || f.startsWith("heroes/anim/");
+        const first = list.filter(f => !lazy(f) && (!f.startsWith("audio/music/") || f.endsWith("/theme.webm")));
+        const later = list.filter(f => f.startsWith("audio/music/") && !first.includes(f));
         let done = 0;
         const q = first.slice();
         await Promise.all(Array.from({ length: 6 }, async () => {
