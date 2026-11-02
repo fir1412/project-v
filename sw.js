@@ -1,4 +1,4 @@
-const VERSION = "vinder-game-13";
+const VERSION = "vinder-game-14";
 // Art and audio keep their own cache across versions (names are stable; stale-while-revalidate refreshes them).
 const ASSETS = "vinder-assets";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "vinder-core.js", "game.js", "game.css", "manifest.webmanifest",

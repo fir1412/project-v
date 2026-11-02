@@ -382,7 +382,15 @@
         bell: { name: "Night Bell", text: "Claiming a bounty gives 2 Light" },
         scale: { name: "Merchant's Scale", text: "The trader charges 25% less" },
         map: { name: "Inked Map", text: "Elites offer 4 cards instead of 3" },
-        quill: { name: "Raven Quill", text: "Ink cards also give 1 Light" }
+        quill: { name: "Raven Quill", text: "Ink cards also give 1 Light" },
+        boots: { name: "Wanderer's Boots", text: "+1 Light whenever you choose a path" },
+        horseshoe: { name: "Lucky Horseshoe", text: "+8 moonshards at every stop on the road" },
+        apron: { name: "Smith's Apron", text: "+6 XP whenever a card is upgraded" },
+        urn: { name: "Ash Urn", text: "+6 moonshards whenever a card is burned" },
+        horn: { name: "Hunting Horn", text: "+2 Light whenever you stake a wager" },
+        snare: { name: "Silver Snare", text: "A won wager pays 3x instead of 2x" },
+        hourglass: { name: "Night Hourglass", text: "Your first verdict on each foe gives 5 more XP" },
+        starlens: { name: "Starlit Lens", text: "Zooming in gives 1 more Light" }
     };
     // Every foe carries one trait. Traits change rewards and how cards play out, never what a verdict does.
     const TRAITS = {
@@ -1005,6 +1013,8 @@
     const haptic = p => { if (meta.haptics === false || !navigator.vibrate) return; try { navigator.vibrate(p); } catch (_) { /* no haptics */ } };
     const HAPTIC = { crit: [18, 30, 26], card: 8, level: [30, 50, 30, 50, 90], defeat: [20, 40, 34], light: 4, pick: 12, nope: [12, 40, 12] };
     const ART = "assets/";
+    // The letter shown until art loads is decoration; screen readers get the name from the label.
+    const initial = t => { const e = h("span", "g-initial", t); e.setAttribute("aria-hidden", "true"); return e; };
     // An <img> that hides itself if the art file is missing, so the layout never shows a broken image.
     function art(path, cls, alt) {
         const i = h("img", cls);
@@ -1150,6 +1160,18 @@
         class_warden: ["守ることが、あなたの力。最後まで倒れない人。", "Guarding is your power. The one who stands till the very end."],
         class_wayfarer: ["歩くことが、あなたの力。どんな道も、あなたの道。", "Walking is your power. Every road is your road."],
         class_moonsmith: ["鍛えることが、あなたの力。弱いものを、強くする人。", "Forging is your power. The one who makes the weak strong."],
+        chapter_1: ["第一章。ランタンの目覚め。", "Chapter one. The Lantern Wakes."],
+        chapter_2: ["第二章。小さな牙。", "Chapter two. Small Teeth."],
+        chapter_3: ["第三章。君主の門。", "Chapter three. The Sovereign's Gate."],
+        chapter_4: ["第四章。塩と雨。", "Chapter four. Salt and Rain."],
+        chapter_5: ["第五章。回らない灯台。", "Chapter five. A Lighthouse That Does Not Turn."],
+        chapter_6: ["第六章。錆の果樹園。", "Chapter six. The Rust Orchard."],
+        chapter_7: ["第七章。茨の摂政の宮廷。", "Chapter seven. The Thorn Regent's Court."],
+        chapter_8: ["第八章。夜の市場。", "Chapter eight. Night Market."],
+        chapter_9: ["第九章。鏡が覚えているもの。", "Chapter nine. What the Mirrors Keep."],
+        chapter_10: ["第十章。月の行方。", "Chapter ten. Where the Moon Went."],
+        chapter_11: ["第十一章。月なき王。", "Chapter eleven. The Moonless King."],
+        chapter_12: ["最終章。夜明け。", "Final chapter. Dawn."],
         class_huntress: ["狩ることが、あなたの力。強い相手ほど、燃える人。", "Hunting is your power. The stronger the foe, the brighter you burn."],
         foe_1: ["あれ、何か出てきた。", "Huh, something's crawled out."],
         foe_2: ["ほら、また一匹いるよ。", "Look, there's another one."],
@@ -1448,9 +1470,9 @@
         const face = $("gHeroFace");
         if (face.dataset.hero !== hero) {
             face.dataset.hero = hero;
-            face.replaceChildren(h("span", "g-initial", CLASSES[hero].name[0]), liveArt("heroes", hero, "g-hero-img", CLASSES[hero].name));
+            face.replaceChildren(initial(CLASSES[hero].name[0]), liveArt("heroes", hero, "g-hero-img", CLASSES[hero].name));
         }
-        if (run) $("gPiles").textContent = `Deck ${run.deck.length}`;
+        if (run) { $("gPiles").textContent = `Deck ${run.deck.length}`; $("gPiles").setAttribute("aria-label", `Deck ${run.deck.length}: view your draw and discard piles`); }
         $("gMe").setAttribute("aria-label", `${CLASSES[hero].name}, level ${L.level}. Your legend and settings`);
         $("gLegendRank").textContent = rankOf(L.level);
         const streak = streakOf(meta.nights || [], new Date());
@@ -1461,7 +1483,7 @@
         $("gLegendXp").style.width = `${(L.into / L.need) * 100}%`;
         homeBtn.setAttribute("aria-label", `Your legend: level ${L.level}, ${rankOf(L.level)}. Settings`);
         const lf = $("gLegendFace"), lh = CLASSES[meta.lastHero] ? meta.lastHero : "seer";
-        if (lf.dataset.hero !== lh) { lf.dataset.hero = lh; lf.replaceChildren(h("span", "g-initial", CLASSES[lh].name[0]), liveArt("heroes", lh, "", "")); }
+        if (lf.dataset.hero !== lh) { lf.dataset.hero = lh; lf.replaceChildren(initial(CLASSES[lh].name[0]), liveArt("heroes", lh, "", "")); }
     }
     const rarity = def => def.unlock >= 4 ? "epic" : def.unlock >= 2 ? "rare" : "common";
     const gainText = (id, g) => (CARDS[id].on === "play" ? `Costs ${costOf(id, false, run ? run.relics : [], false)} Light` : [g.xp && `+${g.xp} XP`, g.light && `+${g.light} Light`, g.scrap && `+${g.scrap} shards`].filter(Boolean).join(" · "));
@@ -1478,7 +1500,7 @@
             b.dataset.uid = uid;
             b.setAttribute("aria-label", `${def.name}${c.up ? " plus" : ""}: ${def.text}, ${gainText(c.id, cardGain(c.id, c.up, run.relics))}`);
             const pic = h("span", "g-card-art");
-            pic.append(h("span", "g-initial", def.name[0]), cardArt(c.id));
+            pic.append(initial(def.name[0]), cardArt(c.id));
             b.append(pic, h("span", "g-card-name", def.name));
             if (c.up) b.appendChild(h("span", "g-plus", "+"));
             const cost = def.on === "play" ? costNow(c) : null;
@@ -1642,7 +1664,7 @@
         if (!meta.seenCards[id]) { meta.seenCards[id] = 1; saveMeta(); }
         b.type = "button";
         const pic = h("span", "g-big-art");
-        pic.append(h("span", "g-initial", def.name[0]), cardArt(id));
+        pic.append(initial(def.name[0]), cardArt(id));
         b.classList.add(`g-${rarity(def)}`);
         b.append(pic, h("span", "g-big-name", `${def.name}${up ? "+" : ""}`), h("span", "g-big-text", def.text),
             h("span", "g-big-gain", gainText(id, cardGain(id, up, run ? run.relics : []))));
@@ -1654,7 +1676,7 @@
         const b = h("button", "g-relic");
         b.type = "button";
         const ic = h("span", "g-relic-icon");
-        ic.append(h("span", "g-initial", r.name[0]), art(`ui/relic-${id}`, "", ""));
+        ic.append(initial(r.name[0]), art(`ui/relic-${id}`, "", ""));
         b.append(ic, h("span", "g-relic-name", r.name), h("span", "g-relic-text", r.text));
         if (note) b.appendChild(h("span", "g-big-note", note));
         return b;
@@ -1700,7 +1722,7 @@
             b.dataset.hero = id;
             b.setAttribute("role", "radio");
             const face = h("span", "g-hero-pick-face");
-            face.append(h("span", "g-initial", c.name[0]), liveArt("heroes", id, "", ""));
+            face.append(initial(c.name[0]), liveArt("heroes", id, "", ""));
             b.append(face, h("b", "", c.name), h("small", "", c.text));
             b.addEventListener("click", () => { sfx("ui"); pickHero(id); say(line(`class_${id}`), true); });
             heroes.appendChild(b);
@@ -1710,6 +1732,8 @@
             h("p", "g-fine", "Every verdict strikes the same blow, whatever you choose. Cards reward looking closely: flipping photos, zooming, reading details, checking values. Choose what's true."));
         if (run.chapter === undefined) run.chapter = meta.runs || 0;
         const ch = chapterOf(run.chapter);
+        // Yui opens the book: the chapter title, except on the very first meeting.
+        const chLine = meta.runs || meta.verdicts ? line(`chapter_${((ch.n - 1) % CHAPTERS.length) + 1}`) : null;
         const chap = h("div", "g-chapter");
         chap.append(h("p", "g-chapter-kicker", `Chapter ${ch.n}${ch.night > 1 ? ` · Night ${ch.night}` : ""}`), h("p", "g-chapter-title", ch.title), h("p", "g-chapter-text", ch.text));
         body.prepend(chap);
@@ -1725,7 +1749,7 @@
             queuePath();
         } }] });
         pickHero(run.hero || "seer");
-        say(spoken, true);
+        say(chLine || spoken, true);
     }
     function boonOverlay() {
         const body = h("div", "g-body");
@@ -1744,7 +1768,7 @@
             const b = h("button", "g-relic");
             b.type = "button";
             const ic = h("span", "g-relic-icon");
-            ic.append(h("span", "g-initial", BOONS[id].name[0]), art({ oil: "ui/relic-lamp", purse: "ui/relic-pouch", whet: "cards/whet", relic: "ui/relic-compass", rare: "cards/wind", clear: "cards/purge" }[id], "", ""));
+            ic.append(initial(BOONS[id].name[0]), art({ oil: "ui/relic-lamp", purse: "ui/relic-pouch", whet: "cards/whet", relic: "ui/relic-compass", rare: "cards/wind", clear: "cards/purge" }[id], "", ""));
             b.append(ic, h("span", "g-relic-name", BOONS[id].name), h("span", "g-relic-text", BOONS[id].text));
             b.addEventListener("click", () => { give(id); nextOverlay(); });
             row.appendChild(b);
@@ -1752,9 +1776,54 @@
         body.append(h("p", "g-lore", "Before the road, Yui holds out three gifts. Take one."), row);
         panel({ kicker: "A gift for the road", title: "Choose a boon", body, actions: [{ label: "No gift", onClick: () => { run.boon = "none"; saveRun(); } }] });
     }
+    // The parchment map: the tale's road winds down the page, one portrait per foe, a label where each act begins.
+    function mapEl() {
+        const wrap = h("div", "g-map");
+        const paper = h("div", "g-map-paper");
+        const svgNS = "http://www.w3.org/2000/svg";
+        const pts = [];
+        let y = 26, act = 0, here = null;
+        nodes().forEach((n, i) => {
+            if (n.act !== act) {
+                act = n.act;
+                const R = REGIONS[act - 1] || REGIONS[0];
+                const lab = h("p", "g-map-act", `Act ${act} · ${R.name}`);
+                lab.style.top = `${y}px`;
+                paper.appendChild(lab);
+                y += 40;
+            }
+            const x = 50 + Math.sin(i * 1.15) * 27;
+            const sp = n.groupId ? speciesAt(n.groupId, n.type) : null;
+            const node = h("div", `g-map-node g-node-${n.type}${nodeDone(n) ? " done" : ""}${run && n.groupId === run.foe ? " here" : ""}`);
+            node.style.left = `${x}%`; node.style.top = `${y}px`;
+            const face = h("span", "g-map-face");
+            if (sp) face.appendChild(art(`foes/${sp.id}`, "", ""));
+            const left = n.groupId && ctx ? ctx.cards.filter(c => String(c.group.groupId) === n.groupId && !V.isDecided(ctx.actions, ctx.decisions[c.key])).length : 0;
+            node.append(face, h("b", "", sp ? sp.name : NODE_NAME[n.type]), h("small", "", nodeDone(n) ? "Vanquished" : `${left} to decide`));
+            paper.appendChild(node);
+            if (node.classList.contains("here")) here = y;
+            pts.push([x, y + 28]);
+            y += n.type === "boss" ? 132 : 112;
+        });
+        const H = y + 10;
+        paper.style.height = `${H}px`;
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("viewBox", `0 0 100 ${H}`);
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.setAttribute("class", "g-map-road");
+        svg.setAttribute("aria-hidden", "true");
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", pts.map(([px, py], i) => i ? `C ${pts[i - 1][0]} ${(pts[i - 1][1] + py) / 2}, ${px} ${(pts[i - 1][1] + py) / 2}, ${px} ${py}` : `M ${px} ${py}`).join(" "));
+        path.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(path);
+        paper.prepend(svg);
+        wrap.appendChild(paper);
+        if (here !== null) requestAnimationFrame(() => { wrap.scrollTop = Math.max(0, here - wrap.clientHeight / 2 + 40); });
+        return wrap;
+    }
     function mapOverlay() {
         const body = h("div", "g-body");
-        body.appendChild(routeEl());
+        body.appendChild(mapEl());
         if (run && run.relics.length) {
             const rel = h("div", "g-relic-row");
             for (const id of run.relics) rel.appendChild(h("span", "g-relic-chip", RELICS[id].name));
@@ -1977,7 +2046,7 @@
             for (const c of cards) {
                 const t = h("div", `g-mini g-${rarity(CARDS[c.id])}`);
                 const pic = h("span", "g-card-art");
-                pic.append(h("span", "g-initial", CARDS[c.id].name[0]), cardArt(c.id));
+                pic.append(initial(CARDS[c.id].name[0]), cardArt(c.id));
                 t.append(pic, h("b", "", `${CARDS[c.id].name}${c.up ? "+" : ""}`), h("small", "", CARDS[c.id].text));
                 row.appendChild(t);
             }
@@ -2016,7 +2085,7 @@
             const known = seen.includes(id), def = CARDS[id];
             const t = h("div", `g-mini g-${rarity(def)}${known ? "" : " locked"}`);
             const pic = h("span", "g-card-art");
-            if (known) pic.append(h("span", "g-initial", def.name[0]), cardArt(id));
+            if (known) pic.append(initial(def.name[0]), cardArt(id));
             t.append(pic, h("b", "", known ? def.name : "???"), h("small", "", known ? def.text : `Unlocks at Lv ${def.unlock}`));
             if (known) t.appendChild(h("em", "", FLAVOR[id] || ""));
             return t;
@@ -2028,7 +2097,7 @@
         for (const [id, r] of Object.entries(RELICS)) {
             const t = h("div", "g-mini");
             const pic = h("span", "g-card-art");
-            pic.append(h("span", "g-initial", r.name[0]), art(`ui/relic-${id}`, "", ""));
+            pic.append(initial(r.name[0]), art(`ui/relic-${id}`, "", ""));
             t.append(pic, h("b", "", r.name), h("small", "", r.text));
             rel.appendChild(t);
         }
@@ -2050,7 +2119,9 @@
         const all = Object.values(CARDS), open = all.filter(d => d.unlock <= L.level).length, next = all.filter(d => d.unlock === L.level + 1).length;
         body.appendChild(h("p", "g-lore", `${open} of ${all.length} cards unlocked${next ? ` · ${next} more at Lv ${L.level + 1}` : ""}. Open the Compendium to browse them.`));
         // Bestiary: every kind of Defect you have vanquished.
-        body.appendChild(h("h3", "g-h3", "Bestiary"));
+        const kinds = REGIONS.reduce((n, R) => n + R.species.length, 0);
+        body.appendChild(h("h3", "g-h3", `Bestiary ${Object.keys(meta.bestiary || {}).length} / ${kinds + REGIONS.length}`));
+        body.appendChild(h("p", "g-fine", `This week: ${thisWeek().ids.length} of ${kinds} kinds met. No kind comes back until you have met them all.`));
         const best = h("div", "g-bestiary");
         for (const [id, name] of REGIONS.flatMap(R => [...R.species, R.boss])) {
             const n = (meta.bestiary || {})[id] || 0;
@@ -2252,7 +2323,14 @@
         }, extra || {});
     }
     // Moments outside the item: these fire from hand like a verdict does.
-    function moment(kind) { const x = trigger(kind, ctxT()); if (x) grant(x, portraitEl); }
+    const MOMENT_RELIC = { path: ["boots", () => earnLight(1)], event: ["horseshoe", () => { run.scrap += 8; floatAt($("gScrap"), "+8 shards", "g-f-xp"); }],
+        upgrade: ["apron", () => grant(6, portraitEl)], burn: ["urn", () => { run.scrap += 6; }], wager: ["horn", () => earnLight(2)] };
+    function moment(kind) {
+        const r = MOMENT_RELIC[kind];
+        if (r && run.relics.includes(r[0])) r[1]();
+        const x = trigger(kind, ctxT());
+        if (x) grant(x, portraitEl);
+    }
     const ITEM_KINDS = new Set(["viewer", "details", "check", "ai"]);
     // Fires matching cards in hand. Item-based kinds fire once per item, and never on an item already scored.
     function trigger(kind, t) {
@@ -2525,7 +2603,7 @@
         let shards = 2 + (run.relics.includes("gear") ? 3 : 0) + (tr === "greedy" ? 6 : 0);
         if (run.omen === "silver") shards = Math.round(shards * 1.5);
         if (run.wager && run.wager.gid === gid) {
-            if (!run.wager.broken) { const won = run.wager.stake * 2; shards += won; xp += 20; setTimeout(() => { floatAt($("gScrap"), `Wager won · +${won}`, "g-f-xp"); sfx("coin"); }, 500); }
+            if (!run.wager.broken) { const won = run.wager.stake * (run.relics.includes("snare") ? 3 : 2); shards += won; xp += 20; setTimeout(() => { floatAt($("gScrap"), `Wager won · +${won}`, "g-f-xp"); sfx("coin"); }, 500); }
             run.wager = null;
         }
         if (run.prey === gid) { xp = Math.round(xp * 1.5); shards += 5; }
@@ -2654,7 +2732,7 @@
                 run.wager.broken = true; floatAt($("gWager"), "Wager lost", "g-f-muted"); sfx("later"); haptic(HAPTIC.nope);
             }
             if (traitHere(card.group.groupId) === "glimmer" && t.total > 1 && t.seen >= t.total) { run.scrap += 5; floatAt($("gScrap"), "+5 shards", "g-f-xp"); }
-            grant(BASE_XP + trigger("verdict", t), portraitEl);
+            grant(BASE_XP + (t.firstOfFoe && run.relics.includes("hourglass") ? 5 : 0) + trigger("verdict", t), portraitEl);
         }
         const bgid = String(card.group.groupId);
         if (nodeType(bgid) === "boss" && !(run.phased && run.phased[bgid])) {
@@ -2682,7 +2760,7 @@
         if (!run.scored[item.key]) {
             const tr = run.foe ? traitHere(run.foe) : null;
             if (kind === "check") { if (item.checks < 2) { item.checks++; earnLight(1); } }
-            else if (!item.lit.has(kind)) { item.lit.add(kind); earnLight(1 + (kind === "viewer" && tr === "restless" ? 1 : 0)); }
+            else if (!item.lit.has(kind)) { item.lit.add(kind); earnLight(1 + (kind === "viewer" && tr === "restless" ? 1 : 0) + (kind === "viewer" && run.relics.includes("starlens") ? 1 : 0)); }
         }
         const xp = trigger(kind, ctxT());
         if (xp) grant(xp, portraitEl);

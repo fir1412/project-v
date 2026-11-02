@@ -113,7 +113,7 @@ body.game-on .actions { padding: 6px 10px calc(32px + env(safe-area-inset-bottom
 .g-foe-name b { font: 800 16px/1.15 var(--g-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .g-tag { flex: none; font: 800 10px/1 var(--g-text); letter-spacing: .08em; text-transform: uppercase; padding: 3px 5px; border-radius: 4px; color: var(--bone); }
 .g-tag:empty { display: none; }
-.g-tag-elite { background: var(--rust); }
+.g-tag-elite { background: #8f3f1f; }
 .g-tag-boss { background: var(--crimson); }
 .g-foe-sub { font: 600 12px/1.3 var(--g-text); color: var(--teal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
 .g-life { display: flex; gap: 2px; margin-top: 6px; height: 8px; }
@@ -568,3 +568,25 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 
 .g-hero-pick:focus:not(:focus-visible) { outline: none; box-shadow: none; }
 .g-hero-pick[aria-checked="true"]:focus:not(:focus-visible) { box-shadow: 0 3px 0 var(--bone-deep), 0 0 0 3px var(--amber); }
+
+/* Parchment route map */
+.g-map { max-height: 58vh; overflow-y: auto; border-radius: 10px; background: radial-gradient(120% 80% at 50% 0%, #efe6d2 0%, var(--bone) 55%, #d8cbb0 100%);
+    box-shadow: inset 0 0 0 1px rgba(27, 34, 56, .15), inset 0 0 40px rgba(27, 34, 56, .18); overscroll-behavior: contain; }
+.g-map-paper { position: relative; }
+.g-map-road { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.g-map-road path { fill: none; stroke: var(--night); stroke-width: 4; stroke-dasharray: 1 8; stroke-linecap: round; opacity: .6; }
+.g-map-act { position: absolute; left: 0; right: 0; margin: 0; text-align: center; font: 800 11px/1 var(--g-text); letter-spacing: .14em; text-transform: uppercase; color: var(--rust); }
+.g-map-node { position: absolute; transform: translateX(-50%); display: grid; justify-items: center; width: 130px; text-align: center; color: var(--night); }
+.g-map-face { position: relative; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: var(--teal); box-shadow: 0 3px 0 rgba(27, 34, 56, .35), 0 0 0 3px var(--bone); }
+.g-map-face img { position: absolute; inset: 6%; width: 88%; height: 88%; object-fit: contain; }
+.g-map-node.g-node-elite .g-map-face { background: var(--rust); }
+.g-map-node.g-node-boss .g-map-face { width: 76px; height: 76px; background: var(--crimson); }
+.g-map-node b { margin-top: 6px; font: 800 14px/1.15 var(--g-display); }
+.g-map-node small { font: 600 11.5px/1.2 var(--g-text); color: var(--teal); }
+.g-map-node.done .g-map-face { filter: grayscale(1) brightness(.85); }
+.g-map-node.done .g-map-face::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font: 900 26px/1 var(--g-text); color: var(--bone); background: rgba(27, 34, 56, .45); }
+.g-map-node.done b, .g-map-node.done small { opacity: .55; }
+.g-map-node.here .g-map-face { box-shadow: 0 3px 0 rgba(27, 34, 56, .35), 0 0 0 3px var(--amber); animation: g-here 1.6s ease-in-out infinite; }
+@keyframes g-here { 50% { box-shadow: 0 3px 0 rgba(27, 34, 56, .35), 0 0 0 7px rgba(224, 162, 67, .45); } }
+@media (prefers-reduced-motion: reduce) { .g-map-node.here .g-map-face { animation: none; } }
+.g-map-node b, .g-map-node small, .g-map-act { text-shadow: 0 0 3px var(--bone), 0 0 6px var(--bone), 0 0 9px var(--bone); }
