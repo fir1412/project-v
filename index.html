@@ -27,6 +27,10 @@
             </label>
             <input type="file" id="packFile" accept=".json,application/json,.vinder" hidden>
             <p class="hint">Pick a pack file from your phone's files. It stays on this phone, so you can swipe offline.</p>
+            <button type="button" class="btn btn-block" id="openKey">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z" /></svg>
+                <span id="openKeyLabel">Set up AI</span>
+            </button>
         </div>
     </section>
 
@@ -94,6 +98,73 @@
         <div id="sheetBody"></div>
         <button type="button" class="btn btn-block" id="sheetClose">Close</button>
     </div>
+</div>
+
+<div class="sheet" id="aiSheet" hidden role="dialog" aria-modal="true" aria-labelledby="aiTitle">
+    <div class="sheet-panel">
+        <div class="sheet-grip" aria-hidden="true"></div>
+        <h2 id="aiTitle">Ask AI</h2>
+        <div id="aiThread" class="ai-thread" aria-live="polite"></div>
+        <div id="aiPresets" class="ai-presets"></div>
+        <form id="aiForm" class="ai-form">
+            <label for="aiQuestion" class="sr-only">Your question</label>
+            <textarea id="aiQuestion" rows="2" placeholder="Ask about this card…"></textarea>
+            <button type="submit" class="btn btn-primary" id="aiSend">Ask</button>
+        </form>
+        <p class="hint" id="aiHint"></p>
+        <button type="button" class="btn btn-block" id="aiClose">Close</button>
+    </div>
+</div>
+
+<div class="sheet" id="keySheet" hidden role="dialog" aria-modal="true" aria-labelledby="keyTitle">
+    <div class="sheet-panel">
+        <div class="sheet-grip" aria-hidden="true"></div>
+        <h2 id="keyTitle">AI key</h2>
+        <p class="hint">Paste your Anthropic API key. It is stored only in this app on this phone and sent only to api.anthropic.com when you tap Ask.</p>
+        <form id="keyForm" class="ai-form">
+            <label for="keyInput" class="sr-only">API key</label>
+            <input type="password" id="keyInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="sk-ant-…">
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+        <p class="hint" id="keyStatus"></p>
+        <button type="button" class="btn btn-block" id="keyRemove">Remove key</button>
+        <button type="button" class="btn btn-block" id="keyClose">Close</button>
+    </div>
+</div>
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photo viewer">
+    <div class="viewer-stage" id="viewerStage">
+        <div class="viewer-layer" id="viewerLayer">
+            <img id="viewerImg" alt="">
+            <svg id="viewerSvg" aria-hidden="true"></svg>
+        </div>
+    </div>
+    <header class="viewer-bar">
+        <button type="button" class="icon-btn viewer-btn" id="viewerClose" aria-label="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+        <div class="viewer-count" id="viewerCount"></div>
+        <button type="button" class="viewer-pill" id="viewerMeasureBtn" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 17 3l4 4L7 21zM7 13l2 2M10 10l2 2M13 7l2 2" /></svg>
+            Measure
+        </button>
+    </header>
+    <div class="viewer-measure" id="viewerMeasure" hidden>
+        <p id="viewerMeasureText"></p>
+        <div class="viewer-measure-row" id="viewerRefRow" hidden>
+            <label for="viewerRefMm">Between the two marks</label>
+            <input type="number" id="viewerRefMm" inputmode="decimal" min="0.1" step="0.1" value="10">
+            <span>mm</span>
+            <button type="button" class="viewer-pill" id="viewerRefOk">OK</button>
+        </div>
+        <button type="button" class="viewer-pill ghost" id="viewerMeasureReset">Start over</button>
+    </div>
+    <button type="button" class="viewer-nav prev" id="viewerPrev" aria-label="Previous photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+    </button>
+    <button type="button" class="viewer-nav next" id="viewerNext" aria-label="Next photo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" /></svg>
+    </button>
 </div>
 
 <div class="celebrate" id="celebrate" hidden aria-live="assertive">

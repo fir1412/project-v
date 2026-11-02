@@ -280,7 +280,15 @@
         more.appendChild(svgIcon("M12 8h.01M11 12h1v5h1"));
         more.addEventListener("pointerdown", e => e.stopPropagation());
         more.addEventListener("click", e => { e.stopPropagation(); openSheet(data); });
-        title.appendChild(more);
+        const ask = el("button", "info-btn");
+        ask.type = "button";
+        ask.setAttribute("aria-label", "Ask AI");
+        ask.appendChild(svgIcon("M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"));
+        ask.addEventListener("pointerdown", e => e.stopPropagation());
+        ask.addEventListener("click", e => { e.stopPropagation(); openAiSheet(data); });
+        const btns = el("div", "card-btns");
+        btns.append(ask, more);
+        title.appendChild(btns);
         const chips = el("div", "chips");
         if (data.item.suggestion) {
             const chip = el("span", "chip ai");
@@ -334,9 +342,10 @@
                 card.style.transform = "";
                 setStamps(card, NO_LEAN);
                 const x = s.x - rect.left;
-                if (data.photos.length > 1 && s.y - rect.top < rect.height * 0.62) {
-                    if (x < rect.width * 0.35) flipPhoto(card, data, -1);
-                    else if (x > rect.width * 0.65) flipPhoto(card, data, 1);
+                if (data.photos.length && s.y - rect.top < rect.height * 0.62) {
+                    if (data.photos.length > 1 && x < rect.width * 0.3) flipPhoto(card, data, -1);
+                    else if (data.photos.length > 1 && x > rect.width * 0.7) flipPhoto(card, data, 1);
+                    else openViewer(data.photos.map((p, i) => ({ ...p, title: data.photos.length > 1 ? "" : data.item.title })), S.photoIndex);
                 }
                 return;
             }
@@ -424,6 +433,394 @@
         resizeTimer = setTimeout(() => { if (!$("deck").hidden) renderDeck(); }, 150);
     });
 
+    const VW = { list: [], index: 0, s: 1, tx: 0, ty: 0, baseW: 0, baseH: 0, pointers: new Map(), gesture: null, lastTap: 0,
+        measuring: false, ref: [], refMm: 0, len: [] };
+
+    function openViewer(list, index) {
+        if (!list || !list.length) return;
+        VW.list = list;
+        VW.index = Math.max(0, Math.min(index || 0, list.length - 1));
+        $("viewer").hidden = false;
+        setMeasuring(false);
+        showViewerPhoto();
+        $("viewerClose").focus();
+    }
+    function closeViewer() {
+        $("viewer").hidden = true;
+        $("viewerImg").removeAttribute("src");
+        VW.pointers.clear();
+    }
+
+    function showViewerPhoto() {
+        const photo = VW.list[VW.index];
+        const img = $("viewerImg");
+        $("viewerCount").textContent = [photo.title, VW.list.length > 1 ? `${VW.index + 1} / ${VW.list.length}` : ""].filter(Boolean).join(" · ");
+        $("viewerPrev").hidden = VW.index === 0;
+        $("viewerNext").hidden = VW.index >= VW.list.length - 1;
+        VW.ref = []; VW.len = []; VW.refMm = 0;
+        img.onload = () => { fitViewer(); drawViewerMarks(); updateMeasureText(); };
+        img.alt = photo.title || `Photo ${VW.index + 1}`;
+        img.src = photo.src;
+    }
+
+    function fitViewer() {
+        const img = $("viewerImg");
+        const stage = $("viewerStage").getBoundingClientRect();
+        const ratio = img.naturalWidth / img.naturalHeight || 3 / 4;
+        let w = stage.width, h = w / ratio;
+        if (h > stage.height) { h = stage.height; w = h * ratio; }
+        VW.baseW = w; VW.baseH = h;
+        const layer = $("viewerLayer");
+        layer.style.width = `${w}px`;
+        layer.style.height = `${h}px`;
+        VW.s = 1;
+        VW.tx = (stage.width - w) / 2;
+        VW.ty = (stage.height - h) / 2;
+        applyViewer();
+    }
+
+    function applyViewer() {
+        const stage = $("viewerStage").getBoundingClientRect();
+        const w = VW.baseW * VW.s, h = VW.baseH * VW.s;
+        VW.tx = w <= stage.width ? (stage.width - w) / 2 : Math.min(0, Math.max(stage.width - w, VW.tx));
+        VW.ty = h <= stage.height ? (stage.height - h) / 2 : Math.min(0, Math.max(stage.height - h, VW.ty));
+        $("viewerLayer").style.transform = `translate(${VW.tx}px, ${VW.ty}px) scale(${VW.s})`;
+    }
+
+    function zoomAt(x, y, s) {
+        const ns = Math.max(1, Math.min(8, s));
+        const ix = (x - VW.tx) / VW.s, iy = (y - VW.ty) / VW.s;
+        VW.s = ns;
+        VW.tx = x - ix * ns;
+        VW.ty = y - iy * ns;
+        applyViewer();
+    }
+
+    function toImage(x, y) {
+        const img = $("viewerImg");
+        const fx = (x - VW.tx) / (VW.baseW * VW.s), fy = (y - VW.ty) / (VW.baseH * VW.s);
+        if (fx < 0 || fx > 1 || fy < 0 || fy > 1) return null;
+        return { x: fx * img.naturalWidth, y: fy * img.naturalHeight };
+    }
+
+    function drawViewerMarks() {
+        const img = $("viewerImg");
+        const W = img.naturalWidth || 1000, H = img.naturalHeight || 1000;
+        const svg = $("viewerSvg");
+        const ns = "http://www.w3.org/2000/svg";
+        svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+        svg.setAttribute("preserveAspectRatio", "none");
+        svg.replaceChildren();
+        const add = (tag, attrs) => {
+            const n = document.createElementNS(ns, tag);
+            for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+            svg.appendChild(n);
+        };
+        const photo = VW.list[VW.index] || {};
+        if (!VW.measuring) {
+            for (const b of Array.isArray(photo.boxes) ? photo.boxes : []) {
+                if (!Array.isArray(b) || b.length < 4) continue;
+                add("rect", { class: "box", x: b[0] * W / 1000, y: b[1] * H / 1000, width: b[2] * W / 1000, height: b[3] * H / 1000, rx: 8 });
+            }
+        }
+        const r = Math.max(W, H) / 160 / Math.sqrt(VW.s);
+        for (const [pts, cls] of [[VW.ref, "m-ref"], [VW.len, "m-len"]]) {
+            if (pts.length === 2) add("line", { class: cls, x1: pts[0].x, y1: pts[0].y, x2: pts[1].x, y2: pts[1].y });
+            for (const p of pts) add("circle", { class: "m-dot", cx: p.x, cy: p.y, r });
+        }
+    }
+
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+    function updateMeasureText() {
+        const t = $("viewerMeasureText");
+        $("viewerRefRow").hidden = !(VW.ref.length === 2 && !VW.refMm);
+        if (VW.ref.length < 2) t.textContent = `Tap two marks on the ruler (${VW.ref.length} of 2). Pinch to zoom in first for a closer tap.`;
+        else if (!VW.refMm) t.textContent = "How many mm apart are those two marks?";
+        else if (VW.len.length < 2) t.textContent = `Now tap both ends of what you want to measure (${VW.len.length} of 2).`;
+        else {
+            const mm = dist(VW.len[0], VW.len[1]) / dist(VW.ref[0], VW.ref[1]) * VW.refMm;
+            t.replaceChildren(document.createTextNode("About "), el("b", "", `${mm < 10 ? mm.toFixed(1) : Math.round(mm)} mm`),
+                document.createTextNode(" - only as good as the taps and the ruler sitting flat beside it. Tap again to measure something else."));
+        }
+    }
+
+    function setMeasuring(on) {
+        VW.measuring = on;
+        VW.ref = []; VW.len = []; VW.refMm = 0;
+        $("viewerMeasureBtn").setAttribute("aria-pressed", String(on));
+        $("viewerMeasure").hidden = !on;
+        if (on) updateMeasureText();
+        drawViewerMarks();
+    }
+
+    function viewerTap(x, y) {
+        const now = performance.now();
+        if (!VW.measuring) {
+            if (now - VW.lastTap < 300) { zoomAt(x, y, VW.s > 1.2 ? 1 : 2.5); VW.lastTap = 0; }
+            else VW.lastTap = now;
+            return;
+        }
+        const p = toImage(x, y);
+        if (!p) return;
+        if (VW.ref.length < 2) VW.ref.push(p);
+        else if (!VW.refMm) return;
+        else if (VW.len.length < 2) VW.len.push(p);
+        else VW.len = [p];
+        buzz(6);
+        drawViewerMarks();
+        updateMeasureText();
+        if (VW.ref.length === 2 && !VW.refMm) $("viewerRefMm").focus();
+    }
+
+    function viewerStep(step) {
+        const next = VW.index + step;
+        if (next < 0 || next >= VW.list.length) { buzz(8); return; }
+        VW.index = next;
+        const measuring = VW.measuring;
+        showViewerPhoto();
+        if (measuring) setMeasuring(true);
+    }
+
+    (function wireViewer() {
+        const stage = $("viewerStage");
+        const local = e => { const r = stage.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+        stage.addEventListener("pointerdown", e => {
+            stage.setPointerCapture(e.pointerId);
+            VW.pointers.set(e.pointerId, local(e));
+            const pts = [...VW.pointers.values()];
+            if (pts.length === 1) VW.gesture = { kind: "pan", start: pts[0], tx: VW.tx, ty: VW.ty, t: performance.now(), moved: false };
+            else if (pts.length === 2) {
+                const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+                VW.gesture = { kind: "pinch", d: Math.max(1, dist(pts[0], pts[1])), s: VW.s, ix: (mid.x - VW.tx) / VW.s, iy: (mid.y - VW.ty) / VW.s };
+            }
+        });
+        stage.addEventListener("pointermove", e => {
+            if (!VW.pointers.has(e.pointerId) || !VW.gesture) return;
+            VW.pointers.set(e.pointerId, local(e));
+            const pts = [...VW.pointers.values()];
+            const g = VW.gesture;
+            if (g.kind === "pinch" && pts.length >= 2) {
+                const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+                VW.s = Math.max(1, Math.min(8, g.s * dist(pts[0], pts[1]) / g.d));
+                VW.tx = mid.x - g.ix * VW.s;
+                VW.ty = mid.y - g.iy * VW.s;
+                applyViewer();
+                drawViewerMarks();
+            } else if (g.kind === "pan") {
+                const p = pts[0];
+                if (Math.hypot(p.x - g.start.x, p.y - g.start.y) > TAP_MOVE) g.moved = true;
+                if (VW.s > 1.01) { VW.tx = g.tx + p.x - g.start.x; VW.ty = g.ty + p.y - g.start.y; applyViewer(); }
+            }
+        });
+        const end = e => {
+            if (!VW.pointers.has(e.pointerId)) return;
+            const p = VW.pointers.get(e.pointerId);
+            VW.pointers.delete(e.pointerId);
+            const g = VW.gesture;
+            if (VW.pointers.size) {
+                const rest = [...VW.pointers.values()][0];
+                VW.gesture = { kind: "pan", start: rest, tx: VW.tx, ty: VW.ty, t: performance.now(), moved: true };
+                return;
+            }
+            VW.gesture = null;
+            if (!g || g.kind !== "pan" || e.type === "pointercancel") return;
+            const dx = p.x - g.start.x, dy = p.y - g.start.y;
+            if (!g.moved && performance.now() - g.t < 350) viewerTap(p.x, p.y);
+            else if (VW.s <= 1.01 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) viewerStep(dx < 0 ? 1 : -1);
+            else if (VW.s <= 1.01 && dy > 120 && Math.abs(dy) > Math.abs(dx) * 1.5 && !VW.measuring) closeViewer();
+        };
+        stage.addEventListener("pointerup", end);
+        stage.addEventListener("pointercancel", end);
+        stage.addEventListener("wheel", e => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, VW.s * (e.deltaY < 0 ? 1.15 : 1 / 1.15)); drawViewerMarks(); }, { passive: false });
+        $("viewerClose").addEventListener("click", closeViewer);
+        $("viewerPrev").addEventListener("click", () => viewerStep(-1));
+        $("viewerNext").addEventListener("click", () => viewerStep(1));
+        $("viewerMeasureBtn").addEventListener("click", () => setMeasuring(!VW.measuring));
+        $("viewerMeasureReset").addEventListener("click", () => setMeasuring(true));
+        const takeRef = () => {
+            const mm = Number(String($("viewerRefMm").value).replace(",", "."));
+            if (!(mm > 0)) { $("viewerRefMm").focus(); return; }
+            VW.refMm = mm;
+            $("viewerRefMm").blur();
+            updateMeasureText();
+        };
+        $("viewerRefOk").addEventListener("click", takeRef);
+        $("viewerRefMm").addEventListener("keydown", e => { if (e.key === "Enter") takeRef(); });
+        document.addEventListener("keydown", e => {
+            if ($("viewer").hidden) return;
+            if (e.key === "Escape") closeViewer();
+            else if (e.key === "ArrowRight") viewerStep(1);
+            else if (e.key === "ArrowLeft") viewerStep(-1);
+        });
+        window.addEventListener("resize", () => { if (!$("viewer").hidden) { fitViewer(); drawViewerMarks(); } });
+    })();
+
+    const SETTINGS_ID = "~settings";
+    const AI_DEFAULT_MODEL = "claude-opus-5-5";
+    const AI_MAX_IMAGES = 8;
+    const AI = { key: "", threads: {}, busy: false };
+
+    async function loadAiKey() {
+        try { AI.key = ((await get("state", SETTINGS_ID)) || {}).aiKey || ""; } catch (_) { AI.key = ""; }
+        $("openKeyLabel").textContent = AI.key ? "AI is set up" : "Set up AI";
+    }
+    async function saveAiKey(key) {
+        AI.key = key;
+        await put("state", { packId: SETTINGS_ID, aiKey: key });
+        $("openKeyLabel").textContent = key ? "AI is set up" : "Set up AI";
+    }
+
+    function openKeySheet() {
+        $("keyInput").value = "";
+        $("keyStatus").textContent = AI.key ? `A key is saved (…${AI.key.slice(-4)}).` : "No key saved yet.";
+        $("keyRemove").hidden = !AI.key;
+        $("keySheet").hidden = false;
+        $("keyInput").focus();
+    }
+    $("openKey").addEventListener("click", openKeySheet);
+    $("keyClose").addEventListener("click", () => { $("keySheet").hidden = true; });
+    $("keyForm").addEventListener("submit", async e => {
+        e.preventDefault();
+        const key = $("keyInput").value.trim();
+        if (!key) return;
+        await saveAiKey(key);
+        $("keyInput").value = "";
+        $("keySheet").hidden = true;
+        toast("AI key saved on this phone.");
+    });
+    $("keyRemove").addEventListener("click", async () => {
+        await saveAiKey("");
+        $("keySheet").hidden = true;
+        toast("AI key removed.");
+    });
+
+    const aiConfig = () => (S.pack && S.pack.ai && typeof S.pack.ai === "object") ? S.pack.ai : {};
+    const dataUrlParts = src => {
+        const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/.exec(String(src || ""));
+        return m ? { media_type: m[1], data: m[2] } : null;
+    };
+
+    function aiFirstContent(data, question) {
+        const content = [];
+        const images = [...data.photos.map(p => ({ src: p.src, label: "photo" })),
+            ...(Array.isArray(data.group.attachments) ? data.group.attachments : []).map(a => ({ src: a.src, label: a.title || "attachment" }))]
+            .slice(0, AI_MAX_IMAGES);
+        images.forEach((img, i) => {
+            const part = dataUrlParts(img.src);
+            if (!part) return;
+            content.push({ type: "text", text: `Image ${i + 1}: ${img.label}` });
+            content.push({ type: "image", source: { type: "base64", ...part } });
+        });
+        const lines = [`Card: ${data.item.title || ""}`, `Group: ${[data.group.title, data.group.subtitle].filter(Boolean).join(" · ")}`];
+        if (data.item.suggestion) lines.push(`${S.pack.suggestionTitle || "Suggested"}: ${(S.pack.suggestionLabels && S.pack.suggestionLabels[data.item.suggestion]) || labelOf(data.item.suggestion)}`);
+        for (const c of Array.isArray(data.item.chips) ? data.item.chips : []) lines.push(`Note: ${c}`);
+        for (const [k, v] of [...pairs(data.item.details), ...pairs(data.group.details)]) lines.push(`${k}: ${v}`);
+        if (data.item.notes) lines.push(`${data.item.noteTitle || "Notes"}:\n${data.item.notes}`);
+        if (data.item.footnote) lines.push(data.item.footnote);
+        if (data.group.notes) lines.push(`${data.group.noteTitle || "Group notes"}:\n${String(data.group.notes).slice(0, 8000)}`);
+        lines.push(`Choices: ${V.DIRECTIONS.map(d => S.actions[d].label).join(" / ")}`);
+        const boxes = data.photos.some(p => Array.isArray(p.boxes) && p.boxes.length);
+        if (boxes) lines.push("Marked areas on the photos (x, y, w, h in a 0-1000 frame): " + data.photos.map((p, i) => `photo ${i + 1}: ${JSON.stringify(p.boxes || [])}`).join("; "));
+        content.push({ type: "text", text: `${lines.join("\n")}\n\nQuestion: ${question}` });
+        return content;
+    }
+
+    function renderAiThread(data) {
+        const box = $("aiThread");
+        box.replaceChildren();
+        const thread = AI.threads[data.key] || [];
+        for (const turn of thread) {
+            if (turn.role === "user") box.appendChild(el("div", "ai-q", turn.question));
+            else box.appendChild(el("div", `ai-a${turn.error ? " error" : ""}`, turn.text));
+            if (turn.cost) box.appendChild(el("div", "ai-cost", turn.cost));
+        }
+        if (AI.busy) box.appendChild(el("div", "ai-a pending", "Thinking…"));
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function openAiSheet(data) {
+        AI.card = data;
+        $("aiTitle").textContent = `Ask AI · ${data.item.title || ""}`;
+        const presets = Array.isArray(aiConfig().presets) && aiConfig().presets.length ? aiConfig().presets
+            : [{ label: "Second opinion", prompt: "Which choice would you make for this card, and why? Point to what in the photos decides it." }];
+        const row = $("aiPresets");
+        row.replaceChildren();
+        for (const p of presets.slice(0, 4)) {
+            const b = el("button", "viewer-pill ai-preset", String(p.label || "Ask"));
+            b.type = "button";
+            b.addEventListener("click", () => askAi(String(p.prompt || p.label || "")));
+            row.appendChild(b);
+        }
+        $("aiHint").textContent = AI.key ? `Sends this card's text and up to ${AI_MAX_IMAGES} images to ${aiConfig().model || AI_DEFAULT_MODEL}.` : "Set up AI on the home screen first (your own API key).";
+        renderAiThread(data);
+        $("aiSheet").hidden = false;
+    }
+
+    async function askAi(question) {
+        const data = AI.card;
+        question = String(question || "").trim();
+        if (!data || !question || AI.busy) return;
+        if (!AI.key) { toast("Set up AI on the home screen first."); return; }
+        const thread = AI.threads[data.key] = AI.threads[data.key] || [];
+        const messages = [];
+        for (const turn of thread) {
+            if (turn.error) continue;
+            messages.push(turn.role === "user" ? { role: "user", content: turn.content } : { role: "assistant", content: turn.content });
+        }
+        while (messages.length && messages[messages.length - 1].role === "user") messages.pop();
+        const content = messages.length ? [{ type: "text", text: question }] : aiFirstContent(data, question);
+        thread.push({ role: "user", question, content });
+        messages.push({ role: "user", content });
+        AI.busy = true;
+        $("aiQuestion").value = "";
+        $("aiSend").disabled = true;
+        renderAiThread(data);
+        const cfg = aiConfig();
+        const model = String(cfg.model || AI_DEFAULT_MODEL);
+        try {
+            const body = {
+                model, max_tokens: 4000, messages, fallbacks: "default",
+                system: String(cfg.system || "You help a reviewer decide on one card from a set of photos and notes. Answer briefly and concretely, in the reviewer's language. Say what in the photos supports your answer, and say plainly when the photos cannot decide it.")
+            };
+            if (cfg.effort) body.output_config = { effort: String(cfg.effort) };
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    "x-api-key": AI.key,
+                    "anthropic-version": "2026-10-21",
+                    "anthropic-beta": "server-side-fallback-2026-07-01",
+                    "anthropic-dangerous-direct-browser-access": "true"
+                },
+                body: JSON.stringify(body)
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                const msg = (json.error && json.error.message) || `HTTP ${res.status}`;
+                throw new Error(res.status === 401 ? "The AI key was not accepted - check it on the home screen." : res.status === 429 ? "Too many requests right now - try again in a minute." : msg);
+            }
+            if (json.stop_reason === "refusal") throw new Error("The AI declined to answer this one.");
+            const blocks = Array.isArray(json.content) ? json.content : [];
+            const text = blocks.filter(b => b.type === "text").map(b => b.text).join("\n").trim() || "(no answer)";
+            const u = json.usage || {};
+            const price = cfg.price && Number(cfg.price.in) >= 0 ? cfg.price : null;
+            const usd = price ? ((u.input_tokens || 0) * Number(price.in) + (u.output_tokens || 0) * Number(price.out)) / 1e6 : null;
+            thread.push({ role: "assistant", text, content: blocks, cost: `${u.input_tokens || 0} in · ${u.output_tokens || 0} out tokens${usd !== null ? ` · about $${usd.toFixed(3)}` : ""}` });
+        } catch (error) {
+            thread.push({ role: "assistant", error: true, text: navigator.onLine === false ? "No connection - AI needs the internet. Swiping still works offline." : `AI: ${error.message}` });
+        } finally {
+            AI.busy = false;
+            $("aiSend").disabled = false;
+            if (AI.card === data) renderAiThread(data);
+        }
+    }
+    $("aiForm").addEventListener("submit", e => { e.preventDefault(); askAi($("aiQuestion").value); });
+    $("aiClose").addEventListener("click", () => { $("aiSheet").hidden = true; });
+    $("aiSheet").addEventListener("click", e => { if (e.target === $("aiSheet")) $("aiSheet").hidden = true; });
+    $("keySheet").addEventListener("click", e => { if (e.target === $("keySheet")) $("keySheet").hidden = true; });
+    loadAiKey();
+
     function openSheet(data) {
         $("sheetTitle").textContent = data.item.title || "";
         const body = $("sheetBody");
@@ -439,6 +836,27 @@
             body.appendChild(el("p", "note-text", data.item.notes));
         }
         if (data.item.footnote) body.appendChild(el("p", "note-text", data.item.footnote));
+        const attachments = (Array.isArray(data.group.attachments) ? data.group.attachments : []).filter(a => a && typeof a.src === "string" && a.src.startsWith("data:image/"));
+        if (attachments.length) {
+            body.appendChild(el("h3", "", data.group.attachmentsTitle || "Attachments"));
+            const list = el("div", "attach-list");
+            attachments.forEach((a, i) => {
+                const b = el("button", "attach");
+                b.type = "button";
+                const img = new Image();
+                img.alt = "";
+                img.loading = "lazy";
+                img.src = a.src;
+                b.append(img, el("span", "", a.title || `Attachment ${i + 1}`));
+                b.addEventListener("click", () => openViewer(attachments.map(x => ({ src: x.src, title: x.title || "" })), i));
+                list.appendChild(b);
+            });
+            body.appendChild(list);
+        }
+        if (data.group.notes) {
+            body.appendChild(el("h3", "", data.group.noteTitle || "Notes"));
+            body.appendChild(el("p", "note-text long", String(data.group.notes)));
+        }
         const others = S.cards.filter(c => c.group.groupId === data.group.groupId && c !== data);
         if (others.length) {
             body.appendChild(el("h3", "", "Others in this group"));
