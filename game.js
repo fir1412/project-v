@@ -164,7 +164,7 @@
         get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode: progress lives for this visit only */ } }
     };
-    const meta = Object.assign({ on: true, music: true, sfx: true, voice: true, mute: false, subs: "ja", vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
+    const meta = Object.assign({ on: false, music: true, sfx: true, voice: true, mute: false, subs: "ja", vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
         store.get("vinderGameMeta", {}));
     const saveMeta = () => store.set("vinderGameMeta", meta);
     const runKey = id => `vinderGameRun:${id}`;
