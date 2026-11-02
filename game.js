@@ -204,6 +204,12 @@
         i.src = `${ART}${path}.webp`;
         return i;
     }
+    // The animated idle loop (dir/anim/id) if there is one, otherwise the still painting.
+    function liveArt(dir, id, cls, alt) {
+        const i = art(`${dir}/anim/${id}`, cls, alt);
+        i.onerror = () => { i.onerror = () => i.remove(); i.src = `${ART}${dir}/${id}.webp`; };
+        return i;
+    }
 
     // ---------- audio: recorded music, effects and Yui's voice (cached offline by the service worker) ----------
     const A = { ctx: null, master: null, music: null, sfx: null, voice: null, bufs: new Map(), track: null, mood: null, speaking: null };
@@ -258,7 +264,7 @@
         A.track = null;
         if (old) { old.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.35); setTimeout(() => { try { old.src.stop(); } catch (_) { /* already stopped */ } }, 2500); }
         if (!m) return;
-        const t = await play(`${ART}audio/music/${m}.webm`, A.music, { loop: true, gain: 0 });
+        const t = await play(`${ART}audio/music/${m === "title" ? "theme" : m}.webm`, A.music, { loop: true, gain: 0 });
         if (!t) return;
         if (A.mood !== m) { t.src.stop(); return; }
         t.g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.5);
@@ -301,11 +307,11 @@
         defeat_1: ["やった、きれいに決まったね。", "Yes, that was clean."],
         defeat_2: ["お見事。ちゃんと見てたね。", "Well done. You really looked."],
         defeat_3: ["道が静かになった。…今のところはね。", "The road's gone quiet. For now, anyway."],
-        defeat_4: ["ふふ、残念でした。", "Heh, too bad for you."],
+        defeat_4: ["残念でした、ふふ。", "Too bad for you, heh."],
         retreat_1: ["逃げちゃった。でも、また会えるよ。", "It slipped away. But we'll meet it again."],
         later_1: ["うん、あとでゆっくり見よう。", "Okay, we'll take a proper look later."],
         revisit_1: ["戻ってきたね。えらいえらい。", "You came back to it. Good, good."],
-        undo_1: ["ちょっと待って、やり直し？いいよ。", "Wait, a do-over? Sure."],
+        undo_1: ["やり直し？いいよ、もう一度見よう。", "A do-over? Sure, let's look again."],
         card_1: ["いい目してる。", "You've got a good eye."],
         card_2: ["そう、それそれ！そういうところ！", "Yes, that's it! That's the stuff!"],
         crit_1: ["会心の一撃！", "Critical hit!"],
@@ -483,14 +489,30 @@
     sizeFx();
     root.addEventListener("resize", sizeFx);
 
-    const homeBtn = h("button", "btn btn-block g-home-btn");
+    const titleBlock = h("div", "g-title-block");
+    titleBlock.innerHTML = '<p class="g-title-kicker">a VINder tale</p><p class="g-title-logo">Pale Moon</p>';
+    const homeBtn = h("button", "g-legend");
     homeBtn.type = "button";
+    homeBtn.innerHTML = '<span class="g-legend-face" id="gLegendFace"></span><span class="g-legend-text"><b id="gLegendRank"></b><span class="g-legend-xp"><span id="gLegendXp"></span></span></span><span class="g-legend-lv" id="gLegendLv"></span>';
+    const talesHead = h("h2", "g-tales-head", "Tales");
+    const homeEl = document.getElementById("home");
+    const packsEl = document.getElementById("packs");
+    if (homeEl && packsEl) { packsEl.before(titleBlock, homeBtn); packsEl.before(talesHead); }
     const checkUpdate = document.getElementById("checkUpdate");
-    if (checkUpdate) checkUpdate.before(homeBtn);
     homeBtn.addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
+    const toggleBtn = h("button", "g-toggle");
+    toggleBtn.type = "button";
+    toggleBtn.setAttribute("role", "switch");
+    toggleBtn.innerHTML = '<span class="g-toggle-track"><span class="g-toggle-knob"></span></span><span class="g-toggle-label">Game</span>';
+    toggleBtn.addEventListener("click", () => {
+        meta.on = !meta.on;
+        saveMeta();
+        apply();
+        if (meta.on) { audio(); sfx("confirm"); sync(); }
+    });
     const tagline = h("p", "g-tagline", "~ Tales of the Pale Moon ~");
     const brand = document.querySelector(".brandbar");
-    if (brand) brand.after(tagline);
+    if (brand) { brand.after(tagline); brand.appendChild(toggleBtn); }
 
     function portraitSvg(gid, type) {
         const r = rng(hash(`${gid}|face`));
@@ -544,10 +566,15 @@
         const face = $("gHeroFace");
         if (face.dataset.hero !== hero) {
             face.dataset.hero = hero;
-            face.replaceChildren(h("span", "g-initial", CLASSES[hero].name[0]), art(`heroes/${hero}`, "g-hero-img", CLASSES[hero].name));
+            face.replaceChildren(h("span", "g-initial", CLASSES[hero].name[0]), liveArt("heroes", hero, "g-hero-img", CLASSES[hero].name));
         }
         $("gMe").setAttribute("aria-label", `${CLASSES[hero].name}, level ${L.level}. Your legend and settings`);
-        homeBtn.textContent = `Pale Moon · Lv ${L.level} ${rankOf(L.level)}`;
+        $("gLegendRank").textContent = rankOf(L.level);
+        $("gLegendLv").textContent = `Lv ${L.level}`;
+        $("gLegendXp").style.width = `${(L.into / L.need) * 100}%`;
+        homeBtn.setAttribute("aria-label", `Your legend: level ${L.level}, ${rankOf(L.level)}. Settings`);
+        const lf = $("gLegendFace"), lh = CLASSES[meta.lastHero] ? meta.lastHero : "seer";
+        if (lf.dataset.hero !== lh) { lf.dataset.hero = lh; lf.replaceChildren(h("span", "g-initial", CLASSES[lh].name[0]), liveArt("heroes", lh, "", "")); }
     }
     const rarity = def => def.unlock >= 4 ? "epic" : def.unlock >= 2 ? "rare" : "common";
     const gainText = (id, g) => [g.xp && `+${g.xp} XP`, g.mom && `+${g.mom} momentum`, g.scrap && `+${g.scrap} shards`, CARDS[id].momReset && "spends momentum"].filter(Boolean).join(" · ");
@@ -616,8 +643,7 @@
             portraitEl.className = `g-portrait g-${type}`;
             portraitEl.innerHTML = portraitSvg(gid, type);
             // The animated idle loop if one exists, otherwise the still painting.
-            const img = art(`foes/anim/${sp.id}`, "g-foe-img", sp.name);
-            img.onerror = () => { img.onerror = () => img.remove(); img.src = `${ART}foes/${sp.id}.webp`; };
+            const img = liveArt("foes", sp.id, "g-foe-img", sp.name);
             img.onload = () => portraitEl.classList.add("has-art");
             portraitEl.appendChild(img);
             if (!reduce) restartClass(portraitEl, "g-enter", 700);
@@ -724,6 +750,7 @@
                 saveRun();
             }
             heroes.querySelectorAll(".g-hero-pick").forEach(b => b.setAttribute("aria-checked", String(b.dataset.hero === id)));
+            meta.lastHero = id; saveMeta();
             renderMe();
         };
         for (const [id, c] of Object.entries(CLASSES)) {
@@ -732,7 +759,7 @@
             b.dataset.hero = id;
             b.setAttribute("role", "radio");
             const face = h("span", "g-hero-pick-face");
-            face.append(h("span", "g-initial", c.name[0]), art(`heroes/${id}`, "", ""));
+            face.append(h("span", "g-initial", c.name[0]), liveArt("heroes", id, "", ""));
             b.append(face, h("b", "", c.name), h("small", "", c.text));
             b.addEventListener("click", () => { sfx("ui"); pickHero(id); say(line(`class_${id}`), true); });
             heroes.appendChild(b);
@@ -855,6 +882,7 @@
         const spoken = line("end");
         const text = spoken.en;
         body.append(h("p", "g-lore", text), dl);
+        moodOverride = "title"; mood();
         panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body, actions: [{ label: "Onward", primary: true }] });
         say(spoken, true);
         sfx("victory");
@@ -929,6 +957,9 @@
     function apply() {
         document.body.classList.toggle("game-on", meta.on);
         tagline.hidden = !meta.on;
+        toggleBtn.setAttribute("aria-checked", String(meta.on));
+        talesHead.textContent = meta.on ? "Tales" : "Packs";
+        toggleBtn.setAttribute("aria-label", meta.on ? "Game mode on. Tap to turn it off" : "Game mode off. Tap to turn it on");
         levels();
         const mute = $("gMute");
         mute.setAttribute("aria-pressed", String(meta.mute));
