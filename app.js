@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-02 19:57 GMT+8 · ae4e748f79";
+    const APP_VERSION = "2026-11-02 · game-mode 1";
 
     let dbPromise = null;
     function db() {
@@ -51,6 +51,7 @@
         if (screen === "home") renderHome();
         if (screen === "deck") renderDeck();
         if (screen === "review") renderReview();
+        emit("screen", screen);
     }
 
     let toastTimer = null;
@@ -68,6 +69,7 @@
         if (text !== undefined && text !== null) n.textContent = text;
         return n;
     };
+    const emit = (name, detail) => document.dispatchEvent(new CustomEvent(`vinder:${name}`, { detail }));
     const svgIcon = d => {
         const ns = "http://www.w3.org/2000/svg";
         const s = document.createElementNS(ns, "svg");
@@ -250,6 +252,7 @@
         S.translations = st.translations || {};
         S.photoIndex = 0;
         applyActions();
+        emit("pack", S);
         show(screen || "deck");
         maybeCoach();
     }
@@ -278,12 +281,14 @@
             send.addEventListener("click", () => show("review"));
             done.appendChild(send);
             stack.appendChild(done);
+            emit("deck");
             return;
         }
         if (q[1]) stack.appendChild(buildCard(q[1], true));
         const top = buildCard(q[0], false);
         stack.appendChild(top);
         attachDrag(top, q[0]);
+        emit("deck");
     }
 
     function fitFrame(frame, img, card) {
@@ -305,6 +310,7 @@
         frame.replaceChildren();
         if (!photos.length) { bg.style.backgroundImage = "none"; return; }
         const photo = photos[index];
+        if (!card.classList.contains("behind")) emit("inspect", { key: data.key, src: photo.src });
         bg.style.backgroundImage = `url("${photo.src}")`;
         const img = new Image();
         img.alt = `Photo ${index + 1} of ${photos.length}: ${data.item.title || ""}`;
@@ -501,7 +507,8 @@
         S.history = r.history;
         S.photoIndex = 0;
         await saveState();
-        if (actionId !== S.actions.down.id && V.groupDone(S.cards, S.decisions, S.actions, data.group.groupId)) celebrate(data.group);
+        emit("decide", { card: data, actionId });
+        if (!document.body.classList.contains("game-on") && actionId !== S.actions.down.id && V.groupDone(S.cards, S.decisions, S.actions, data.group.groupId)) celebrate(data.group);
         renderDeck();
     }
 
@@ -531,11 +538,12 @@
         S.photoIndex = 0;
         await saveState();
         buzz(10);
+        emit("undo", { key: r.key });
         renderDeck();
         toast("Undone");
     });
     document.addEventListener("keydown", e => {
-        if ($("deck").hidden || !$("sheet").hidden) return;
+        if ($("deck").hidden || !$("sheet").hidden || document.body.classList.contains("g-modal")) return;
         const map = { ArrowRight: "right", ArrowLeft: "left", ArrowUp: "up", ArrowDown: "down" };
         if (map[e.key]) { e.preventDefault(); decideTop(map[e.key]); }
         if (e.key === "Backspace" || (e.key === "z" && (e.ctrlKey || e.metaKey))) $("actUndo").click();
@@ -572,6 +580,7 @@
     function showViewerPhoto() {
         const photo = VW.list[VW.index];
         const img = $("viewerImg");
+        emit("inspect", { src: photo.src, viewer: true });
         updateViewerMove();
         $("viewerPrev").hidden = VW.index === 0;
         $("viewerNext").hidden = VW.index >= VW.list.length - 1;
@@ -965,6 +974,7 @@
         question = String(question || "").trim();
         if (!data || !question || AI.busy) return;
         if (!AI.key) { toast("Set up AI on the home screen first."); return; }
+        emit("ai");
         const thread = AI.threads[data.key] = AI.threads[data.key] || [];
         const messages = [];
         for (const turn of thread) {
@@ -1079,6 +1089,7 @@
     }
 
     function openSheet(data, refresh) {
+        if (!refresh) emit("details");
         $("sheetTitle").textContent = V.itemTitle(data, S.checks) || "";
         const body = $("sheetBody");
         body.replaceChildren();
@@ -1243,6 +1254,7 @@
             const original = String((data.item.values || {})[fieldId] ?? "").trim();
             S.checks = V.setFieldCheck(S.checks, { groupId: data.group.groupId, fieldId, itemIndex: data.item.itemIndex, value: String(value).trim() === original ? null : value });
             await saveState();
+            emit("check");
             buzz(8);
             refreshSheet(data);
         };
@@ -1327,6 +1339,7 @@
         const saveField = async (f, value) => {
             S.checks = V.setFieldCheck(S.checks, { groupId: g.groupId, fieldId: f.id, value });
             await saveState();
+            emit("check");
             buzz(8);
         };
         const currentOf = f => { const c = V.fieldCheckOf(S.checks, g.groupId, f.id); return c ? c.value : String(f.value || ""); };
@@ -1534,6 +1547,7 @@
             }
             S.sentAt = new Date().toISOString();
             await saveState();
+            emit("send");
             renderReview();
         } catch (error) {
             if (error && error.name === "AbortError") return;
