@@ -35,14 +35,14 @@
     const put = (name, value) => run(name, "readwrite", s => s.put(value));
     const del = (name, key) => run(name, "readwrite", s => s.delete(key));
 
-    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null };
+    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {} };
     const actionById = id => Object.values(S.actions).find(a => a.id === id) || null;
     const labelOf = id => (actionById(id) || { label: id }).label;
     const colorOf = id => (actionById(id) || { color: "" }).color;
 
     async function saveState() {
         if (!S.pack) return;
-        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt });
+        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt, moves: S.moves });
     }
 
     function show(screen) {
@@ -174,6 +174,7 @@
         S.decisions = st.decisions || {};
         S.history = st.history || [];
         S.sentAt = st.sentAt || null;
+        S.moves = st.moves || {};
         S.photoIndex = 0;
         applyActions();
         show(screen || "deck");
@@ -298,6 +299,8 @@
         }
         for (const c of Array.isArray(data.item.chips) ? data.item.chips : []) if (c) chips.appendChild(el("span", "chip", String(c)));
         if (data.photos.length) chips.appendChild(el("span", "chip", `${data.photos.length} photo${data.photos.length === 1 ? "" : "s"}`));
+        const movedHere = V.movesList(S.moves).filter(m => m.groupId === data.group.groupId && (m.from === data.item.itemIndex || m.to === data.item.itemIndex)).length;
+        if (movedHere) chips.appendChild(el("span", "chip moved", `${movedHere} photo move${movedHere === 1 ? "" : "s"}`));
         const same = S.cards.filter(c => c.group.groupId === data.group.groupId);
         const pos = same.indexOf(data) + 1;
         info.append(title, chips, el("div", "card-sub", [data.group.title, data.group.subtitle, same.length > 1 ? `${pos} of ${same.length}` : ""].filter(Boolean).join(" · ")));
@@ -345,7 +348,7 @@
                 if (data.photos.length && s.y - rect.top < rect.height * 0.62) {
                     if (data.photos.length > 1 && x < rect.width * 0.3) flipPhoto(card, data, -1);
                     else if (data.photos.length > 1 && x > rect.width * 0.7) flipPhoto(card, data, 1);
-                    else openViewer(data.photos.map((p, i) => ({ ...p, title: data.photos.length > 1 ? "" : data.item.title })), S.photoIndex);
+                    else openViewer(data.photos.map(p => ({ ...p, title: data.photos.length > 1 ? "" : data.item.title, move: { group: data.group, photoId: String(p.id), from: data.item.itemIndex } })), S.photoIndex);
                 }
                 return;
             }
@@ -447,6 +450,7 @@
     }
     function closeViewer() {
         $("viewer").hidden = true;
+        if (!$("deck").hidden && $("sheet").hidden) renderDeck();
         $("viewerImg").removeAttribute("src");
         VW.pointers.clear();
     }
@@ -454,7 +458,7 @@
     function showViewerPhoto() {
         const photo = VW.list[VW.index];
         const img = $("viewerImg");
-        $("viewerCount").textContent = [photo.title, VW.list.length > 1 ? `${VW.index + 1} / ${VW.list.length}` : ""].filter(Boolean).join(" · ");
+        updateViewerMove();
         $("viewerPrev").hidden = VW.index === 0;
         $("viewerNext").hidden = VW.index >= VW.list.length - 1;
         VW.ref = []; VW.len = []; VW.refMm = 0;
@@ -462,6 +466,65 @@
         img.alt = photo.title || `Photo ${VW.index + 1}`;
         img.src = photo.src;
     }
+
+    function itemTitle(group, index) {
+        const card = S.cards.find(c => c.group.groupId === group.groupId && c.item.itemIndex === index);
+        return card ? (card.item.title || `#${index + 1}`) : `#${index + 1}`;
+    }
+    function moveText(m) {
+        const labels = (S.pack && S.pack.moveLabels) || {};
+        return m.to === "new" ? (labels.newItem || "New item") : m.to === "none" ? (labels.none || "Off this item") : itemTitle({ groupId: m.groupId }, m.to);
+    }
+    function updateViewerMove() {
+        const photo = VW.list[VW.index] || {};
+        const m = photo.move ? V.moveOf(S.moves, photo.move.group.groupId, photo.move.photoId) : null;
+        $("viewerCount").textContent = [photo.title, VW.list.length > 1 ? `${VW.index + 1} / ${VW.list.length}` : "", m ? `→ ${moveText(m)}` : ""].filter(Boolean).join(" · ");
+        $("viewerMoveBtn").hidden = !photo.move;
+        $("viewerMoveBtn").setAttribute("aria-pressed", String(Boolean(m)));
+    }
+
+    function openMoveSheet() {
+        const photo = VW.list[VW.index];
+        if (!photo || !photo.move) return;
+        const { group, photoId, from } = photo.move;
+        const labels = (S.pack && S.pack.moveLabels) || {};
+        const current = V.moveOf(S.moves, group.groupId, photoId);
+        const body = $("moveBody");
+        body.replaceChildren();
+        const choose = async to => {
+            S.moves = V.setMove(S.moves, { groupId: group.groupId, photoId, from, to });
+            await saveState();
+            $("moveSheet").hidden = true;
+            buzz(10);
+            updateViewerMove();
+            const now = V.moveOf(S.moves, group.groupId, photoId);
+            toast(now ? `Photo → ${moveText(now)}` : "Move undone.");
+        };
+        const option = (label, to, sub) => {
+            const b = el("button", `move-opt${current && current.to === to ? " on" : ""}`);
+            b.type = "button";
+            b.append(el("span", "", label));
+            if (sub) b.appendChild(el("small", "", sub));
+            b.addEventListener("click", () => choose(to));
+            body.appendChild(b);
+        };
+        for (const c of S.cards.filter(x => x.group.groupId === group.groupId)) {
+            if (c.item.itemIndex === from) continue;
+            option(c.item.title || `#${c.item.itemIndex + 1}`, c.item.itemIndex, from === null ? (labels.addTo || "Add to this item") : (labels.moveTo || "Move here"));
+        }
+        option(labels.newItem || "New item", "new", labels.newItemHint || "Starts a new item with this photo");
+        if (from !== null) option(labels.none || "Off this item", "none", labels.noneHint || "This photo doesn't belong to it");
+        if (current) {
+            const clear = el("button", "btn btn-block", "Undo this move");
+            clear.type = "button";
+            clear.addEventListener("click", () => choose(null));
+            body.appendChild(clear);
+        }
+        $("moveTitle").textContent = labels.title || "Where does this photo belong?";
+        $("moveSheet").hidden = false;
+    }
+    $("moveClose").addEventListener("click", () => { $("moveSheet").hidden = true; });
+    $("moveSheet").addEventListener("click", e => { if (e.target === $("moveSheet")) $("moveSheet").hidden = true; });
 
     function fitViewer() {
         const img = $("viewerImg");
@@ -637,6 +700,7 @@
         $("viewerPrev").addEventListener("click", () => viewerStep(-1));
         $("viewerNext").addEventListener("click", () => viewerStep(1));
         $("viewerMeasureBtn").addEventListener("click", () => setMeasuring(!VW.measuring));
+        $("viewerMoveBtn").addEventListener("click", openMoveSheet);
         $("viewerMeasureReset").addEventListener("click", () => setMeasuring(true));
         const takeRef = () => {
             const mm = Number(String($("viewerRefMm").value).replace(",", "."));
@@ -848,7 +912,7 @@
                 img.loading = "lazy";
                 img.src = a.src;
                 b.append(img, el("span", "", a.title || `Attachment ${i + 1}`));
-                b.addEventListener("click", () => openViewer(attachments.map(x => ({ src: x.src, title: x.title || "" })), i));
+                b.addEventListener("click", () => openViewer(attachments.map(x => ({ src: x.src, title: x.title || "", move: x.movable && x.id ? { group: data.group, photoId: String(x.id), from: null } : null })), i));
                 list.appendChild(b);
             });
             body.appendChild(list);
@@ -935,20 +999,58 @@
             }
             list.appendChild(group);
         }
+        const moves = V.movesList(S.moves);
+        if (moves.length) {
+            const sec = el("section", "grp");
+            const head = el("div", "grp-head");
+            head.append(el("span", "", "Photo moves"), el("small", "", String(moves.length)));
+            sec.appendChild(head);
+            for (const m of moves) {
+                const groupCard = S.cards.find(c => c.group.groupId === m.groupId);
+                const g = groupCard ? groupCard.group : { groupId: m.groupId };
+                const found = S.cards.flatMap(c => c.group.groupId === m.groupId ? c.photos : []).find(p => String(p.id) === m.photoId) ||
+                    (Array.isArray(g.attachments) ? g.attachments : []).find(a => String(a.id) === m.photoId) || {};
+                const row = el("div", "row");
+                const thumb = el("img", "row-thumb");
+                thumb.alt = "";
+                if (found.src) thumb.src = found.src;
+                const text = el("div", "row-text", `${m.from === null ? (found.title || "Photo") : itemTitle(g, m.from)} → ${moveText(m)}`);
+                text.appendChild(el("small", "", g.title || ""));
+                const undo = el("button", "icon-btn");
+                undo.type = "button";
+                undo.setAttribute("aria-label", "Undo this move");
+                undo.appendChild(svgIcon("M6 6l12 12M18 6 6 18"));
+                undo.addEventListener("click", async () => {
+                    S.moves = V.setMove(S.moves, { groupId: m.groupId, photoId: m.photoId, from: m.from, to: null });
+                    await saveState();
+                    renderReview();
+                });
+                row.append(thumb, text, undo);
+                sec.appendChild(row);
+            }
+            list.appendChild(sec);
+        }
         const p = V.progress(S.cards, S.decisions, S.actions);
-        $("sendDecisions").disabled = !p.decided;
+        $("sendDecisions").disabled = !p.decided && !moves.length;
         $("sendHint").textContent = `${S.sentAt ? `Last sent ${fmtDate(S.sentAt)} - send again after changes. ` : ""}${S.pack.sendHint || "Save the file where the pack came from."}`;
     }
 
     $("sendDecisions").addEventListener("click", async () => {
-        const data = V.decisionsFile(S.pack, S.cards, S.decisions);
+        const data = V.decisionsFile(S.pack, S.cards, S.decisions, undefined, S.moves);
         const name = `vinder-decisions-${S.pack.packId}.json`;
         const blob = new Blob([JSON.stringify(data, null, 1)], { type: "application/json" });
         const file = new File([blob], name, { type: "application/json" });
         try {
+            let shared = false;
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: name });
-            } else {
+                try {
+                    await navigator.share({ files: [file], title: name });
+                    shared = true;
+                } catch (error) {
+                    if (error && error.name === "AbortError") throw error;
+                }
+            }
+            if (!shared) {
                 const a = document.createElement("a");
                 a.href = URL.createObjectURL(blob);
                 a.download = name;

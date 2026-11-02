@@ -116,11 +116,22 @@
         return counts;
     }
 
-    function decisionsFile(pack, cards, decisions, at) {
+    const moveKey = (groupId, photoId) => `${groupId}|${photoId}`;
+    function setMove(moves, { groupId, photoId, from = null, to, at }) {
+        const next = { ...moves };
+        const key = moveKey(groupId, photoId);
+        if (to === undefined || to === null || to === from) delete next[key];
+        else next[key] = { groupId: String(groupId), photoId: String(photoId), from: from === null ? null : Number(from), to: typeof to === "number" ? to : String(to), at: at || new Date().toISOString() };
+        return next;
+    }
+    const moveOf = (moves, groupId, photoId) => (moves && moves[moveKey(groupId, photoId)]) || null;
+    const movesList = moves => Object.values(moves || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+
+    function decisionsFile(pack, cards, decisions, at, moves) {
         return {
             app: "VINder",
             kind: "decisions",
-            version: 1,
+            version: 2,
             packId: pack.packId,
             exportedAt: at || new Date().toISOString(),
             decisions: cards.filter(c => decisions[c.key]).map(c => ({
@@ -128,11 +139,12 @@
                 itemIndex: c.item.itemIndex,
                 action: decisions[c.key].action,
                 decidedAt: decisions[c.key].decidedAt
-            }))
+            })),
+            moves: movesList(moves).map(m => ({ groupId: m.groupId, photoId: m.photoId, from: m.from, to: m.to, movedAt: m.at }))
         };
     }
 
-    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile };
+    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, moveKey, setMove, moveOf, movesList };
     root.VINderCore = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

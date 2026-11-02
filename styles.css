@@ -23,6 +23,7 @@
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
 body { overscroll-behavior: none; }
 #app { height: 100dvh; max-width: 520px; margin: 0 auto; display: flex; flex-direction: column;
@@ -225,3 +226,13 @@ button { font: inherit; color: inherit; }
 .ai-preset { border-color: var(--border-input); background: transparent; color: var(--text); }
 .ai-form { display: flex; gap: 8px; align-items: stretch; }
 .ai-form textarea, .ai-form input { flex: 1; min-height: 52px; border-radius: 14px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; padding: 10px 12px; resize: none; }
+
+.sheet.sheet-top { z-index: 35; }
+.viewer-bar .viewer-pill { padding: 0 12px; }
+.viewer-count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.move-body { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.move-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 10px 14px; border-radius: 14px;
+    border: 1.5px solid var(--border); background: var(--bg); color: var(--text); font: inherit; font-size: 16px; font-weight: 650; text-align: left; cursor: pointer; }
+.move-opt small { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.move-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.chip.moved { background: rgba(255, 214, 10, .92); color: #111827; }
