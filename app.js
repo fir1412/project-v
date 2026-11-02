@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 4";
+    const APP_VERSION = "2026-11-03 · Pale Moon 5";
 
     let dbPromise = null;
     function db() {
@@ -47,11 +47,18 @@
     }
 
     function show(screen) {
-        for (const id of ["home", "deck", "review"]) $(id).hidden = id !== screen;
-        if (screen === "home") renderHome();
-        if (screen === "deck") renderDeck();
-        if (screen === "review") renderReview();
-        emit("screen", screen);
+        const swap = () => {
+            for (const id of ["home", "deck", "review"]) $(id).hidden = id !== screen;
+            if (screen === "home") renderHome();
+            if (screen === "deck") renderDeck();
+            if (screen === "review") renderReview();
+            emit("screen", screen);
+        };
+        const animate = document.startViewTransition && document.body.classList.contains("game-on")
+            && !document.body.classList.contains("g-reduce") && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!animate) { swap(); return; }
+        document.documentElement.dataset.go = screen === "home" ? "back" : "in";
+        document.startViewTransition(swap);
     }
 
     let toastTimer = null;

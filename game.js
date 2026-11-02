@@ -248,6 +248,9 @@
     const groupById = gid => { const c = ctx && ctx.cards.find(x => String(x.group.groupId) === String(gid)); return c ? c.group : null; };
 
     const foeName = gid => speciesOf(gid, nodeType(gid)).name;
+    // Distinct vibration per moment; off with the Vibration setting.
+    const haptic = p => { if (meta.haptics === false || !navigator.vibrate) return; try { navigator.vibrate(p); } catch (_) { /* no haptics */ } };
+    const HAPTIC = { crit: [18, 30, 26], card: 8, level: [30, 50, 30, 50, 90], defeat: [20, 40, 34], light: 4, pick: 12, nope: [12, 40, 12] };
     const ART = "assets/";
     // An <img> that hides itself if the art file is missing, so the layout never shows a broken image.
     function art(path, cls, alt) {
@@ -610,13 +613,31 @@
             strip.appendChild(dot);
         }
     }
+    // Numbers tick up instead of jumping, with a small bump.
+    const shown = {};
+    function countUp(id, value) {
+        const host = $(id), b = host.querySelector("b");
+        const from = shown[id] === undefined ? value : shown[id];
+        shown[id] = value;
+        if (from === value || reduce) { b.textContent = String(value); return; }
+        const t0 = performance.now();
+        const step = now => {
+            const k = Math.min(1, (now - t0) / 450);
+            b.textContent = String(Math.round(from + (value - from) * (1 - Math.pow(1 - k, 3))));
+            if (k < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+        if (value > from) restartClass(host, "g-bump", 320);
+    }
     function renderMe() {
         const L = levelOf(meta.xp);
         $("gLvl").textContent = String(L.level);
         $("gXpFill").style.setProperty("--xp", `${Math.round((L.into / L.need) * 360)}deg`);
-        $("gMom").innerHTML = `${ICON.mom}<b>${run ? run.light : 0}</b>`;
+        if (!$("gMom").querySelector("b")) $("gMom").innerHTML = `${ICON.mom}<b>0</b>`;
+        countUp("gMom", run ? run.light : 0);
         $("gMom").title = `Light ${run ? run.light : 0} of ${run ? lightCap(run.relics) : 10}`;
-        $("gScrap").innerHTML = `${ICON.shard}<b>${run ? run.scrap : 0}</b>`;
+        if (!$("gScrap").querySelector("b")) $("gScrap").innerHTML = `${ICON.shard}<b>0</b>`;
+        countUp("gScrap", run ? run.scrap : 0);
         const hero = run && CLASSES[run.hero] ? run.hero : "seer";
         const face = $("gHeroFace");
         if (face.dataset.hero !== hero) {
@@ -654,8 +675,10 @@
                 b.classList.add("g-active");
                 if (run.light >= cost && run.foe) b.classList.add("g-ready");
                 b.appendChild(h("span", "g-cost", String(cost)));
+                dragToPlay(b, uid, () => run.light >= cost && Boolean(run.foe));
             }
             b.addEventListener("click", () => {
+                if (b.dataset.dragged) return;
                 const tip = $("gTip");
                 const same = !tip.hidden && tip.dataset.uid === uid;
                 tip.hidden = same;
@@ -674,6 +697,35 @@
             hand.appendChild(b);
         }
         justDrawn.clear();
+    }
+    // Drag an active card up past the line to play it; it snaps back if you let go early or lack Light.
+    function dragToPlay(b, uid, ready) {
+        let s = null;
+        b.addEventListener("pointerdown", e => { s = { x: e.clientX, y: e.clientY, id: e.pointerId, moved: false }; b.setPointerCapture(e.pointerId); });
+        b.addEventListener("pointermove", e => {
+            if (!s || e.pointerId !== s.id) return;
+            const dx = e.clientX - s.x, dy = Math.min(0, e.clientY - s.y);
+            if (Math.abs(dx) > 6 || dy < -6) s.moved = true;
+            if (!s.moved) return;
+            b.classList.add("g-dragging");
+            b.style.transform = `translate(${dx * 0.4}px, ${dy}px) rotate(${dx * 0.04}deg) scale(${1 + Math.min(0.18, -dy / 380)})`;
+            b.classList.toggle("g-armed", dy < -70);
+        });
+        const end = e => {
+            if (!s || e.pointerId !== s.id) return;
+            const dy = e.clientY - s.y, moved = s.moved;
+            s = null;
+            b.classList.remove("g-dragging", "g-armed");
+            b.style.transform = "";
+            if (!moved) return;
+            b.dataset.dragged = "1";
+            setTimeout(() => { delete b.dataset.dragged; }, 60);
+            if (dy > -70) return;
+            if (ready()) { haptic(HAPTIC.card); playActive(uid); }
+            else { haptic(HAPTIC.nope); restartClass(b, "g-nope", 320); floatAt(b, "Need more Light", "g-f-muted"); }
+        };
+        b.addEventListener("pointerup", end);
+        b.addEventListener("pointercancel", end);
     }
     let lifeShown = { gid: null, gone: new Set() };
     function renderLife(gid, mine) {
@@ -1103,6 +1155,7 @@
 
     function levelUp(lvl) {
         sfx("level");
+        haptic(HAPTIC.level);
         const unlocked = Object.keys(CARDS).filter(id => CARDS[id].unlock === lvl).map(id => CARDS[id].name);
         const banner = h("div", "g-banner");
         banner.setAttribute("aria-hidden", "true");
@@ -1130,6 +1183,7 @@
         run.light = Math.min(lightCap(run.relics), run.light + n);
         if (run.light > before) {
             floatAt($("gMom"), `+${run.light - before} Light`, "g-f-light");
+            haptic(HAPTIC.light);
             if (run.light >= 5 && before < 5 && Math.random() < 0.5) say(line("momentum_1"));
         }
         renderMe();
@@ -1216,8 +1270,8 @@
             f.style.opacity = "0";
         });
         setTimeout(() => { f.remove(); burst(to.x, to.y, { n: 22, colors: crit ? ["#b4562f", "#e6dcc6"] : ["#e0a243", "#e6dcc6"], speed: 4 }); }, 420);
-        if (crit) { setTimeout(() => floatAt(portraitEl, "CRIT!", "g-f-crit"), 430); say(line("crit_1")); }
-        else if (Math.random() < 0.12) say(line("card"));
+        if (crit) { setTimeout(() => floatAt(portraitEl, "CRIT!", "g-f-crit"), 430); say(line("crit_1")); haptic(HAPTIC.crit); }
+        else { haptic(HAPTIC.card); if (Math.random() < 0.12) say(line("card")); }
     }
     function strikeFx(color) {
         const c = center(portraitEl);
@@ -1294,6 +1348,7 @@
         holdUntil = performance.now() + (reduce ? 300 : 1000);
         setTimeout(() => grant(xp, portraitEl), 350);
         sfx("defeat");
+        haptic(HAPTIC.defeat);
         setTimeout(() => sfx("victory"), 250);
         const c = center(portraitEl);
         portraitEl.classList.add("g-dead");
@@ -1330,7 +1385,7 @@
             if (tr) txt.appendChild(h("em", "", `${TRAITS[tr].name}: ${TRAITS[tr].text}`));
             b.append(pic, txt);
             if (o.type === "elite") b.appendChild(h("span", "g-tag g-tag-elite", "Elite"));
-            b.addEventListener("click", () => { sfx("confirm"); prefer(o.groupId); nextOverlay(); });
+            b.addEventListener("click", () => { sfx("confirm"); haptic(HAPTIC.pick); prefer(o.groupId); nextOverlay(); });
             list.appendChild(b);
         }
         body.append(h("p", "g-lore", "The road forks under the moon. Which way?"), list,
@@ -1439,6 +1494,35 @@
             if (A.ctx) A.ctx.suspend().catch(() => {});
         } else mood();
     });
+
+    // ---------- splash: moonrise while everything loads, once per app launch ----------
+    async function preload(progress) {
+        let list = [];
+        try { list = (await (await fetch(`${ART}manifest.json`)).json()).files || []; } catch (_) { return; }
+        const first = list.filter(f => !f.startsWith("audio/music/") || f.endsWith("/theme.webm"));
+        const later = list.filter(f => !first.includes(f));
+        let done = 0;
+        const q = first.slice();
+        await Promise.all(Array.from({ length: 6 }, async () => {
+            while (q.length) { const f = q.shift(); try { await fetch(ART + f); } catch (_) { /* offline: skip */ } progress(++done, first.length); }
+        }));
+        // The other music tracks follow quietly, so the first battle never waits.
+        setTimeout(() => later.forEach((f, i) => setTimeout(() => fetch(ART + f).catch(() => {}), i * 500)), 2500);
+    }
+    function splash() {
+        try { if (sessionStorage.getItem("pmSplash")) return; sessionStorage.setItem("pmSplash", "1"); } catch (_) { /* private mode: show it */ }
+        const s = h("div", "g-splash");
+        s.setAttribute("role", "status");
+        s.innerHTML = '<div class="g-splash-moon"></div><p class="g-title-kicker">a VINder tale</p><p class="g-title-logo">Pale Moon</p><div class="g-splash-bar"><span></span></div><p class="g-splash-note">Lighting the lanterns…</p><p class="g-splash-tap">Tap to skip</p>';
+        document.body.appendChild(s);
+        const bar = s.querySelector(".g-splash-bar span"), t0 = performance.now();
+        let closed = false;
+        const close = () => { if (closed) return; closed = true; s.classList.add("g-out"); setTimeout(() => s.remove(), 650); audio(); mood(); };
+        s.addEventListener("click", close);
+        setTimeout(close, 7000);
+        preload((d, n) => { bar.style.width = `${Math.round((d / n) * 100)}%`; }).then(() => setTimeout(close, Math.max(0, 1600 - (performance.now() - t0))));
+    }
+    if (meta.on) splash();
 
     apply();
 })(typeof globalThis !== "undefined" ? globalThis : this);

@@ -415,3 +415,49 @@ body:not(.game-on) #home .empty { padding: 20px; }
 .g-beast-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .g-beast.unseen { background: var(--night); color: var(--fog); }
 .g-beast.unseen img { filter: brightness(0) opacity(.5); }
+
+/* ---------- premium round 1 ---------- */
+@property --xp { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.g-hero-ring { transition: --xp .7s cubic-bezier(.2, .8, .2, 1); }
+.g-bump { animation: g-bump .32s var(--g-in); }
+@keyframes g-bump { 40% { transform: scale(1.3); } }
+.g-splash { position: fixed; inset: 0; z-index: 90; display: grid; place-content: center; justify-items: center; gap: 6px; padding: 24px; text-align: center; cursor: pointer;
+    background: var(--night) url("assets/bg/title.webp") center 18% / cover no-repeat; transition: opacity .6s ease, transform .6s ease; }
+.g-splash::before { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(27, 34, 56, .2), rgba(27, 34, 56, .85) 70%); }
+.g-splash > * { position: relative; }
+.g-splash-moon { width: 120px; height: 120px; border-radius: 50%; background: var(--bone); margin-bottom: 18px; animation: g-moonrise 1.6s var(--g-in) both; }
+@keyframes g-moonrise { from { transform: translateY(80px); opacity: 0; } }
+.g-splash .g-title-logo { animation: g-fadein 1s .3s both; }
+.g-splash .g-title-kicker { animation: g-fadein 1s .1s both; }
+@keyframes g-fadein { from { opacity: 0; transform: translateY(10px); } }
+.g-splash-bar { width: min(60vw, 240px); height: 4px; margin-top: 26px; border-radius: 2px; background: rgba(230, 220, 198, .2); overflow: hidden; }
+.g-splash-bar span { display: block; width: 0; height: 100%; background: var(--amber); transition: width .25s ease-out; }
+.g-splash-note { margin: 10px 0 0; font: italic 500 14px/1.3 var(--g-display); color: var(--fog); }
+.g-splash-tap { margin: 18px 0 0; font: 600 11px/1 var(--g-text); letter-spacing: .14em; text-transform: uppercase; color: rgba(154, 163, 168, .6); }
+.g-splash.g-out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+::view-transition-old(root) { animation: g-vt-out .2s ease-in both; }
+::view-transition-new(root) { animation: g-vt-in .34s cubic-bezier(.2, 1.1, .3, 1) both; }
+html[data-go="back"]::view-transition-new(root) { animation-name: g-vt-back; }
+@keyframes g-vt-out { to { opacity: 0; transform: scale(.98); } }
+@keyframes g-vt-in { from { opacity: 0; transform: translateY(24px) scale(1.02); } }
+@keyframes g-vt-back { from { opacity: 0; transform: translateY(-16px); } }
+.g-hand .g-card:nth-child(1) { transform: rotate(-2.5deg) translateY(2px); }
+.g-hand .g-card:nth-child(3) { transform: rotate(2.5deg) translateY(2px); }
+.g-hand .g-card:nth-child(4) { transform: rotate(4deg) translateY(4px); }
+.g-card.g-active { touch-action: none; }
+.g-card.g-dragging { z-index: 6; transition: none; box-shadow: 0 10px 0 rgba(18, 24, 41, .5); }
+.g-card.g-armed { box-shadow: 0 0 0 3px var(--amber), 0 10px 0 rgba(18, 24, 41, .5); }
+.g-nope { animation: g-nope .32s; }
+@keyframes g-nope { 25% { transform: translateX(-6px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-3px); } }
+@media (prefers-reduced-motion: reduce) { .g-splash-moon, .g-splash .g-title-logo, .g-splash .g-title-kicker { animation: none; } }
+/* splash: the painted moon itself rises behind the logo (no second moon) */
+.g-splash { place-content: start center; padding-top: calc(env(safe-area-inset-top) + 16vh);
+    background: var(--night) url("assets/bg/title.webp") center calc(min(100vw, 520px) * -0.5) / min(100vw, 520px) auto no-repeat; animation: g-splash-rise 1.8s cubic-bezier(.2, .8, .2, 1) both; }
+.g-splash::before { background: linear-gradient(to bottom, rgba(27, 34, 56, 0) 45%, var(--night) 75%); }
+.g-splash-moon { display: none; }
+.g-splash-bar { margin-top: 46vh; }
+@keyframes g-splash-rise { from { background-position: center calc(min(100vw, 520px) * -0.5 + 140px); } }
+@media (prefers-reduced-motion: reduce) { .g-splash { animation: none; } }
+.g-splash { padding-top: calc(env(safe-area-inset-top) + 7vh); background-position: center calc(min(100vw, 520px) * -0.15); }
+@keyframes g-splash-rise { from { background-position: center calc(min(100vw, 520px) * -0.15 + 150px); } }
+.g-splash-bar { margin-top: 52vh; }
