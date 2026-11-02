@@ -488,3 +488,28 @@ body.g-cb.game-on .act[data-dir="left"] { --c: #e69f00 !important; }
 body.g-cb.game-on .act[data-dir="up"] { --c: #d55e00 !important; }
 body.g-cb.game-on .act[data-dir="down"] { --c: #777 !important; }
 body.g-reduce *, body.g-reduce *::before, body.g-reduce *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+
+/* ---------- premium round 3: achievements, omen, streak, lanterns ---------- */
+.g-achv { position: fixed; z-index: 70; left: 50%; top: calc(10px + env(safe-area-inset-top)); width: min(92vw, 380px); transform: translateX(-50%); display: grid; gap: 2px;
+    padding: 12px 16px; border-radius: 10px; background: var(--amber); color: var(--night); box-shadow: 0 4px 0 var(--amber-deep); animation: g-achv 3.6s var(--g-in) forwards; font-family: var(--g-text); }
+.g-achv-kicker { font: 800 11px/1 var(--g-text); letter-spacing: .16em; text-transform: uppercase; opacity: .8; }
+.g-achv b { font: 900 19px/1.15 var(--g-display); }
+.g-achv small { font-size: 13px; }
+@keyframes g-achv { 0% { transform: translate(-50%, -120%); } 10%, 85% { transform: translate(-50%, 0); } 100% { transform: translate(-50%, -140%); } }
+.g-omen { display: none; }
+body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10px 14px; border-radius: 10px; background: rgba(18, 24, 41, .82); color: var(--bone); font: 500 13px/1.35 var(--g-text); }
+.g-omen b { font: 800 12px/1 var(--g-text); letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+.g-body .g-omen { margin: 0; }
+.g-legend-streak { font: 700 12px/1 var(--g-text); color: var(--amber-deep); }
+.g-legend-streak:empty { display: none; }
+.g-achievements { display: grid; gap: 6px; }
+.g-ach { display: grid; padding: 9px 12px; border-radius: 8px; background: var(--bone); color: var(--night); }
+.g-ach b { font: 800 14px/1.2 var(--g-display); }
+.g-ach small { font-size: 12px; color: var(--teal); }
+.g-ach.locked { background: var(--night); color: var(--fog); }
+.g-ach.locked small { color: var(--fog); }
+.g-swatches { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.g-swatch { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 10px; border: 0; border-radius: 10px; cursor: pointer; background: var(--night); color: var(--bone); font: 700 13px var(--g-text); text-align: left; }
+.g-swatch i { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--sw); }
+.g-swatch.on { box-shadow: 0 0 0 3px var(--sw); }
+.g-swatch:disabled { opacity: .5; }

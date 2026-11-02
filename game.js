@@ -197,7 +197,50 @@
         return (nonBoss.length ? nonBoss : open).slice(0, n);
     }
 
-    const rules = { hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    // One omen per calendar day, the same for everyone that day; applies to tales started that day.
+    const OMENS = {
+        silver: { name: "Silver Night", text: "Foes drop 50% more moonshards" },
+        wick: { name: "Long Wick", text: "Hold 3 more Light" },
+        clear: { name: "Clear Sky", text: "Start each foe with 1 Light" },
+        owl: { name: "Owl's Eye", text: "Photo cards give 25% more XP" },
+        cross: { name: "Crossroads", text: "See one more path at each fork" },
+        kind: { name: "Kind Moon", text: "Your first active card on each foe costs 1 less" }
+    };
+    const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const omenOf = key => Object.keys(OMENS)[hash(`omen|${key}`) % Object.keys(OMENS).length];
+    // Consecutive days ending today (or yesterday, so a streak survives until tonight's first verdict).
+    function streakOf(days, today) {
+        const set = new Set(days);
+        const d = new Date(today);
+        if (!set.has(dayKey(d))) d.setDate(d.getDate() - 1);
+        let n = 0;
+        while (set.has(dayKey(d))) { n++; d.setDate(d.getDate() - 1); }
+        return n;
+    }
+    const ACHIEVEMENTS = {
+        first: { name: "The First Night", text: "Vanquish your first foe" },
+        tale: { name: "Told in Full", text: "Finish a tale" },
+        sgrade: { name: "Not a Thing Missed", text: "Earn an S grade" },
+        boss: { name: "Sovereign's End", text: "Vanquish the Pale Sovereign" },
+        elites: { name: "Elder's Bane", text: "Vanquish 5 elites" },
+        hundred: { name: "A Hundred Verdicts", text: "Make 100 verdicts" },
+        lamp: { name: "Lamplighter", text: "Hold 10 Light at once" },
+        sharp: { name: "Card Sharp", text: "Play 20 active cards" },
+        paths: { name: "Three Paths", text: "Finish a tale as Seer, Scribe and Warden" },
+        naturalist: { name: "Naturalist", text: "Meet every kind of Defect" },
+        collector: { name: "Collector", text: "Hold 4 relics in one tale" },
+        three: { name: "Three Nights", text: "Walk the road 3 nights in a row" },
+        week: { name: "A Week of Moons", text: "Walk the road 7 nights in a row" },
+        warden10: { name: "Moonwarden", text: "Reach level 10" }
+    };
+    // Lantern colours recolour the accent; unlocked by level or achievements.
+    const LANTERNS = {
+        amber: { name: "Amber", c: "#e0a243", d: "#a8741f", need: () => true, how: "" },
+        moon: { name: "Moonlight", c: "#8fb4d8", d: "#5b7fa3", need: m => levelOf(m.xp).level >= 5, how: "Reach level 5" },
+        verdant: { name: "Verdant", c: "#a7c37f", d: "#6d8a4c", need: m => Object.keys(m.achv || {}).length >= 6, how: "Earn 6 achievements" },
+        rose: { name: "Rose", c: "#e0928f", d: "#a35a5a", need: m => levelOf(m.xp).level >= 10, how: "Reach level 10" }
+    };
+    const rules = { OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -249,6 +292,26 @@
     const groupById = gid => { const c = ctx && ctx.cards.find(x => String(x.group.groupId) === String(gid)); return c ? c.group : null; };
 
     const foeName = gid => speciesOf(gid, nodeType(gid)).name;
+    const capOf = () => lightCap(run.relics) + (run.omen === "wick" ? 3 : 0);
+    function costNow(c) {
+        const base = costOf(c.id, c.up, run.relics, run.sealUsed !== run.foe);
+        return Math.max(0, base - (run.omen === "kind" && run.kindUsed !== run.foe ? 1 : 0));
+    }
+    // Achievements: unlock once, with a badge toast.
+    function award(id) {
+        meta.achv = meta.achv || {};
+        if (meta.achv[id] || !ACHIEVEMENTS[id]) return;
+        meta.achv[id] = Date.now();
+        saveMeta();
+        const t = h("div", "g-achv");
+        t.setAttribute("role", "status");
+        t.append(h("span", "g-achv-kicker", "Achievement"), h("b", "", ACHIEVEMENTS[id].name), h("small", "", ACHIEVEMENTS[id].text));
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3600);
+        sfx("relic");
+        haptic(HAPTIC.level);
+    }
+    const stat = (k, n) => { meta.stats = meta.stats || {}; meta.stats[k] = (meta.stats[k] || 0) + (n || 1); return meta.stats[k]; };
     // Distinct vibration per moment; off with the Vibration setting.
     const haptic = p => { if (meta.haptics === false || !navigator.vibrate) return; try { navigator.vibrate(p); } catch (_) { /* no haptics */ } };
     const HAPTIC = { crit: [18, 30, 26], card: 8, level: [30, 50, 30, 50, 90], defeat: [20, 40, 34], light: 4, pick: 12, nope: [12, 40, 12] };
@@ -556,11 +619,12 @@
     titleBlock.innerHTML = '<p class="g-title-kicker">a VINder tale</p><p class="g-title-logo">Pale Moon</p>';
     const homeBtn = h("button", "g-legend");
     homeBtn.type = "button";
-    homeBtn.innerHTML = '<span class="g-legend-face" id="gLegendFace"></span><span class="g-legend-text"><b id="gLegendRank"></b><span class="g-legend-xp"><span id="gLegendXp"></span></span></span><span class="g-legend-lv" id="gLegendLv"></span>';
+    homeBtn.innerHTML = '<span class="g-legend-face" id="gLegendFace"></span><span class="g-legend-text"><b id="gLegendRank"></b><small class="g-legend-streak" id="gLegendStreak"></small><span class="g-legend-xp"><span id="gLegendXp"></span></span></span><span class="g-legend-lv" id="gLegendLv"></span>';
+    const omenChip = h("p", "g-omen");
     const talesHead = h("h2", "g-tales-head", "Tales");
     const homeEl = document.getElementById("home");
     const packsEl = document.getElementById("packs");
-    if (homeEl && packsEl) { packsEl.before(titleBlock, homeBtn); packsEl.before(talesHead); }
+    if (homeEl && packsEl) { packsEl.before(titleBlock, homeBtn, omenChip); packsEl.before(talesHead); }
     const checkUpdate = document.getElementById("checkUpdate");
     homeBtn.addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
     const toggleBtn = h("button", "g-toggle");
@@ -641,7 +705,7 @@
         $("gXpFill").style.setProperty("--xp", `${Math.round((L.into / L.need) * 360)}deg`);
         if (!$("gMom").querySelector("b")) $("gMom").innerHTML = `${ICON.mom}<b>0</b>`;
         countUp("gMom", run ? run.light : 0);
-        $("gMom").title = `Light ${run ? run.light : 0} of ${run ? lightCap(run.relics) : 10}`;
+        $("gMom").title = `Light ${run ? run.light : 0} of ${run ? capOf() : 10}`;
         if (!$("gScrap").querySelector("b")) $("gScrap").innerHTML = `${ICON.shard}<b>0</b>`;
         countUp("gScrap", run ? run.scrap : 0);
         const hero = run && CLASSES[run.hero] ? run.hero : "seer";
@@ -652,6 +716,10 @@
         }
         $("gMe").setAttribute("aria-label", `${CLASSES[hero].name}, level ${L.level}. Your legend and settings`);
         $("gLegendRank").textContent = rankOf(L.level);
+        const streak = streakOf(meta.nights || [], new Date());
+        $("gLegendStreak").textContent = streak > 1 ? `${streak}-night streak` : streak === 1 ? "On the road tonight" : "";
+        const om = OMENS[omenOf(dayKey(new Date()))];
+        omenChip.replaceChildren(h("b", "", `Tonight's omen · ${om.name}`), h("span", "", om.text));
         $("gLegendLv").textContent = `Lv ${L.level}`;
         $("gLegendXp").style.width = `${(L.into / L.need) * 100}%`;
         homeBtn.setAttribute("aria-label", `Your legend: level ${L.level}, ${rankOf(L.level)}. Settings`);
@@ -676,7 +744,7 @@
             pic.append(h("span", "g-initial", def.name[0]), art(`cards/${c.id}`, "", ""));
             b.append(pic, h("span", "g-card-name", def.name));
             if (c.up) b.appendChild(h("span", "g-plus", "+"));
-            const cost = def.on === "play" ? costOf(c.id, c.up, run.relics, run.sealUsed !== run.foe) : null;
+            const cost = def.on === "play" ? costNow(c) : null;
             if (cost !== null) {
                 b.classList.add("g-active");
                 if (run.light >= cost && run.foe) b.classList.add("g-ready");
@@ -893,7 +961,8 @@
             b.addEventListener("click", () => { sfx("ui"); pickHero(id); say(line(`class_${id}`), true); });
             heroes.appendChild(b);
         }
-        body.append(h("p", "g-lore", text), heroes, routeEl(),
+        const om = run.omen && OMENS[run.omen];
+        body.append(h("p", "g-lore", text), ...(om ? [h("p", "g-omen", `Tonight's omen · ${om.name}: ${om.text}`)] : []), heroes, routeEl(),
             h("p", "g-fine", "Every verdict strikes the same blow, whatever you choose. Cards reward looking closely: flipping photos, zooming, reading details, checking values. Choose what's true."));
         panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Begin", primary: true, onClick: () => {
             audio(); mood();
@@ -1056,14 +1125,57 @@
         const gradeEl = h("div", `g-grade g-grade-${grade}`);
         gradeEl.append(h("b", "", grade), h("span", "", grade === "S" ? "Not a thing slipped past you." : grade === "A" ? "A careful night's work." : grade === "B" ? "Good. Look a little closer next time." : "The moon saw more than you did."));
         const spoken = line(grade === "S" ? "grade_s" : "end");
+        award("tale");
+        if (grade === "S") award("sgrade");
+        if (run.relics.length >= 4) award("collector");
+        meta.classesDone = meta.classesDone || {};
+        meta.classesDone[run.hero || "seer"] = 1;
+        if (Object.keys(meta.classesDone).length >= 3) award("paths");
+        saveMeta();
         const text = spoken.en;
         body.append(gradeEl, h("p", "g-lore", text), dl);
         setTimeout(() => sfx("rank"), 400);
         moodOverride = "title"; mood();
-        panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body, actions: [{ label: "Onward", primary: true }] });
+        panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body,
+            actions: [{ label: "Share", onClick: () => { shareCard(grade, foes); return false; } }, { label: "Onward", primary: true }] });
         say(spoken, true);
         sfx("victory");
         if (!reduce) for (let i = 0; i < 4; i++) setTimeout(() => burst(root.innerWidth * (0.2 + Math.random() * 0.6), root.innerHeight * 0.3, { n: 40, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 6 }), i * 250);
+    }
+    // A picture of tonight's tale to share: art, grade, foes, hero, date.
+    async function shareCard(grade, foes) {
+        const W = 1080, H = 1350, cv = document.createElement("canvas");
+        cv.width = W; cv.height = H;
+        const g = cv.getContext("2d");
+        const img = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+        try { await document.fonts.ready; } catch (_) { /* system fonts */ }
+        g.fillStyle = "#1b2238"; g.fillRect(0, 0, W, H);
+        const bg = await img(`${ART}bg/title.webp`);
+        if (bg) g.drawImage(bg, 0, -260, W, W * bg.height / bg.width);
+        const fade = g.createLinearGradient(0, 520, 0, 980);
+        fade.addColorStop(0, "rgba(27,34,56,0)"); fade.addColorStop(1, "#1b2238");
+        g.fillStyle = fade; g.fillRect(0, 0, W, H);
+        g.textAlign = "center"; g.fillStyle = "#9aa3a8";
+        g.font = "700 30px Figtree, sans-serif"; g.fillText("A  V I N D E R  T A L E", W / 2, 110);
+        g.fillStyle = "#e6dcc6"; g.font = "900 120px Fraunces, Georgia, serif"; g.fillText("Pale Moon", W / 2, 230);
+        const hero = await img(`${ART}heroes/${run.hero || "seer"}.webp`);
+        if (hero) { g.save(); g.beginPath(); g.arc(W / 2, 760, 120, 0, Math.PI * 2); g.fillStyle = "#2f4f57"; g.fill(); g.clip(); g.drawImage(hero, W / 2 - 120, 640, 240, 240); g.restore(); }
+        g.fillStyle = grade === "S" ? (getComputedStyle(document.body).getPropertyValue("--amber").trim() || "#e0a243") : "#e6dcc6";
+        g.font = "900 260px Fraunces, Georgia, serif"; g.fillText(grade, W / 2, 1100);
+        g.fillStyle = "#e6dcc6"; g.font = "800 52px Fraunces, Georgia, serif"; g.fillText(ctx.pack.title || "A night on the road", W / 2, 1180);
+        g.fillStyle = "#9aa3a8"; g.font = "600 34px Figtree, sans-serif";
+        g.fillText(`${foes} foes · ${run.xp} XP · ${CLASSES[run.hero || "seer"].name} · Lv ${level()}`, W / 2, 1236);
+        g.fillText(new Date().toLocaleDateString([], { day: "numeric", month: "long", year: "numeric" }), W / 2, 1290);
+        const blob = await new Promise(res => cv.toBlob(res, "image/png"));
+        if (!blob) return;
+        const file = new File([blob], "pale-moon-tale.png", { type: "image/png" });
+        try {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Pale Moon" }); return; }
+        } catch (e) { if (e && e.name === "AbortError") return; }
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = file.name;
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     }
     function profileOverlay() {
         const L = levelOf(meta.xp);
@@ -1095,6 +1207,15 @@
             best.appendChild(tile);
         }
         body.appendChild(best);
+        body.appendChild(h("h3", "g-h3", `Achievements ${Object.keys(meta.achv || {}).length} / ${Object.keys(ACHIEVEMENTS).length}`));
+        const ach = h("div", "g-achievements");
+        for (const [id, a] of Object.entries(ACHIEVEMENTS)) {
+            const got = Boolean((meta.achv || {})[id]);
+            const row = h("div", `g-ach${got ? "" : " locked"}`);
+            row.append(h("b", "", a.name), h("small", "", a.text));
+            ach.appendChild(row);
+        }
+        body.appendChild(ach);
         panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true,
             actions: [{ label: "Settings", onClick: () => { queue.unshift(settingsOverlay); } }, { label: "Close", primary: true }] });
     }
@@ -1141,6 +1262,19 @@
         toggle(comfort, "haptics", "Vibration", () => haptic(HAPTIC.pick));
         toggle(comfort, "reduceMotion", "Reduce motion");
         toggle(comfort, "cb", "Colour-blind verdict colours");
+        const looks = section("Lantern colour");
+        const swatches = h("div", "g-swatches");
+        for (const [id, lc] of Object.entries(LANTERNS)) {
+            const open = lc.need(meta);
+            const b = h("button", `g-swatch${(meta.lantern || "amber") === id ? " on" : ""}`);
+            b.type = "button";
+            b.disabled = !open;
+            b.style.setProperty("--sw", lc.c);
+            b.append(h("i"), h("span", "", open ? lc.name : lc.how));
+            b.addEventListener("click", () => { meta.lantern = id; saveMeta(); apply(); swatches.querySelectorAll(".g-swatch").forEach(x => x.classList.toggle("on", x === b)); haptic(HAPTIC.pick); });
+            swatches.appendChild(b);
+        }
+        looks.appendChild(swatches);
         const game = section("Game");
         toggle(game, "on", "Pale Moon game mode");
         const replay = h("button", "g-chip-btn", "Replay the tutorial with Yui");
@@ -1161,6 +1295,9 @@
         reduce = systemReduce || Boolean(meta.reduceMotion);
         document.body.classList.toggle("g-reduce", reduce);
         document.body.classList.toggle("g-cb", Boolean(meta.cb));
+        const lc = LANTERNS[meta.lantern] && LANTERNS[meta.lantern].need(meta) ? LANTERNS[meta.lantern] : LANTERNS.amber;
+        document.body.style.setProperty("--amber", lc.c);
+        document.body.style.setProperty("--amber-deep", lc.d);
         for (const s of ["s", "m", "l", "xl"]) document.body.classList.toggle(`g-ts-${s}`, meta.textSize === s);
         tagline.hidden = !meta.on;
         toggleBtn.setAttribute("aria-checked", String(meta.on));
@@ -1177,6 +1314,7 @@
     }
 
     function levelUp(lvl) {
+        if (lvl >= 10) award("warden10");
         sfx("level");
         haptic(HAPTIC.level);
         const unlocked = Object.keys(CARDS).filter(id => CARDS[id].unlock === lvl).map(id => CARDS[id].name);
@@ -1203,7 +1341,8 @@
     function earnLight(n) {
         if (!n || !run) return;
         const before = run.light;
-        run.light = Math.min(lightCap(run.relics), run.light + n);
+        run.light = Math.min(capOf(), run.light + n);
+        if (run.light >= 10) award("lamp");
         if (run.light > before) {
             floatAt($("gMom"), `+${run.light - before} Light`, "g-f-light");
             haptic(HAPTIC.light);
@@ -1227,6 +1366,7 @@
             }
             const g = cardGain(c.id, c.up, run.relics);
             let gx = tr === "armored" ? Math.round(g.xp * 0.75) : g.xp;
+            if (run.omen === "owl" && PHOTO_CARDS.has(c.id)) gx = Math.round(gx * 1.25);
             const chance = (run.relics.includes("bolt") ? 0.2 : 0) + (tr === "brittle" ? 0.25 : 0);
             const crit = Boolean(gx) && (run.nextCrit || Math.random() < chance);
             if (crit) { gx *= 2; run.nextCrit = false; }
@@ -1246,10 +1386,12 @@
         const c = cardOf(uid);
         if (!c || !run.foe) return;
         const sealReady = run.sealUsed !== run.foe;
-        const cost = costOf(c.id, c.up, run.relics, sealReady);
+        const cost = costNow(c);
         if (run.light < cost) return;
         run.light -= cost;
         if (run.relics.includes("seal") && sealReady) run.sealUsed = run.foe;
+        if (run.omen === "kind") run.kindUsed = run.foe;
+        if (stat("actives") >= 20) award("sharp");
         const more = c.up ? 1.5 : 1;
         switch (c.id) {
         case "flare": run.double = run.foe; floatAt(portraitEl, "Loot ×2", "g-f-xp"); break;
@@ -1313,7 +1455,7 @@
         if (run.foe && run.foe !== gid && run.lastAction === "later" && !run.defeated[run.foe] && groupById(run.foe)) say(line("retreat_1"));
         run.foe = gid;
         run.played = 0;
-        earnLight((run.relics.includes("lamp") ? 2 : 0) + (run.relics.includes("owl") ? 1 : 0));
+        earnLight((run.relics.includes("lamp") ? 2 : 0) + (run.relics.includes("owl") ? 1 : 0) + (run.omen === "clear" ? 1 : 0));
         run.first = true;
         discardHand(run);
         refillHand(run, Math.random).forEach(u => justDrawn.add(u));
@@ -1411,12 +1553,17 @@
         let xp = Math.round((20 + 5 * n) * (type === "boss" ? 2 : type === "elite" ? 1.5 : 1) * (tr === "armored" ? 1.5 : 1));
         xp += trigger("defeat", { played: run.played });
         let shards = 2 + (run.relics.includes("gear") ? 3 : 0) + (tr === "greedy" ? 6 : 0);
+        if (run.omen === "silver") shards = Math.round(shards * 1.5);
         if (run.double === gid) { xp *= 2; shards *= 2; }
         run.scrap += shards;
         meta.foes++;
         const sp = speciesOf(gid, type).id;
         meta.bestiary = meta.bestiary || {};
         meta.bestiary[sp] = (meta.bestiary[sp] || 0) + 1;
+        award("first");
+        if (type === "elite" && stat("elites") >= 5) award("elites");
+        if (type === "boss") award("boss");
+        if (Object.keys(meta.bestiary).length >= SPECIES.length + 1) award("naturalist");
         holdUntil = performance.now() + (reduce ? 300 : 1000);
         setTimeout(() => grant(xp, portraitEl), 350);
         sfx("defeat");
@@ -1438,7 +1585,7 @@
     }
     // Choose your path: the next foes you may face. Every vehicle still gets done; this only picks the order.
     function queuePath() {
-        const options = pathChoices(nodes(), groupOpen, run.relics.includes("compass") ? 4 : 3);
+        const options = pathChoices(nodes(), groupOpen, (run.relics.includes("compass") ? 4 : 3) + (run.omen === "cross" ? 1 : 0));
         if (options.length < 2) { prefer(options[0] ? options[0].groupId : null); return; }
         enqueue(() => pathOverlay(options));
     }
@@ -1472,6 +1619,7 @@
         run = saved && Array.isArray(saved.deck) ? saved : newRun(ctx.pack.packId, hash(ctx.pack.packId));
         greet = Boolean(saved && saved.introduced && !saved.done);
         if (run.light === undefined) { run.light = 0; delete run.momentum; }
+        if (!saved) run.omen = omenOf(dayKey(new Date()));
         if (!saved) saveRun();
         document.dispatchEvent(new CustomEvent("vinder:prefer", { detail: run.pref || null }));
         item = null;
@@ -1501,6 +1649,15 @@
         strikeFx(STRIKE[V.directionOf(ctx.actions, actionId)] || "#e6dcc6");
         sfx("hit");
         meta.verdicts++;
+        if (meta.verdicts >= 100) award("hundred");
+        const today = dayKey(new Date());
+        meta.nights = meta.nights || [];
+        if (!meta.nights.includes(today)) {
+            meta.nights = [...meta.nights.slice(-60), today];
+            const s = streakOf(meta.nights, new Date());
+            if (s >= 3) award("three");
+            if (s >= 7) award("week");
+        }
         if (!run.scored[card.key]) {
             // Undo then redo earns nothing twice.
             run.scored[card.key] = 1;

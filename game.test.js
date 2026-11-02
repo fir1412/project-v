@@ -58,4 +58,11 @@ assert.ok(!G.CARDS.panorama.test({ seen: 1, total: 1 }));
 
 // Rewards respect unlock level.
 assert.ok(G.rewardChoices(Math.random, 1, 20).every(id => G.CARDS[id].unlock <= 1));
+// Omens and streaks.
+assert.ok(G.OMENS[G.omenOf("2026-11-03")]);
+assert.strictEqual(G.dayKey(new Date(2026, 0, 5)), "2026-01-05");
+assert.strictEqual(G.streakOf(["2026-11-01", "2026-11-02", "2026-11-03"], new Date(2026, 10, 3)), 3);
+assert.strictEqual(G.streakOf(["2026-11-01", "2026-11-02"], new Date(2026, 10, 3)), 2);
+assert.strictEqual(G.streakOf(["2026-10-30"], new Date(2026, 10, 3)), 0);
+assert.ok(G.LANTERNS.amber.need({ xp: 0 }) && !G.LANTERNS.rose.need({ xp: 0 }));
 console.log("game rules ok");
