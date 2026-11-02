@@ -546,3 +546,7 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 .g-hud.g-act5 .g-scene { background-image: url("assets/bg/battle5.webp"); }
 .g-phase img, .g-phase .g-face { animation: g-phase .9s ease-out; }
 @keyframes g-phase { 0% { filter: brightness(2.6) saturate(0); transform: scale(1.12); } 30% { transform: translateX(-8px) scale(1.06); } 60% { transform: translateX(6px); } }
+
+/* Compendium family tabs */
+.g-fam-tabs { margin: 4px 0 12px; }
+.g-fam-tabs .g-chip-btn[aria-selected="true"] { background: var(--bone); color: var(--night); box-shadow: 0 2px 0 var(--bone-deep), 0 0 0 2px var(--amber); }

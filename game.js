@@ -59,21 +59,312 @@
         afterglow: { name: "Afterglow", on: "verdict", test: t => t.light >= 5, xp: 15, text: "Verdict while holding 5+ Light", unlock: 3 },
         chain: { name: "Chain of Sight", on: "verdict", test: t => t.photoFired >= 2, xp: 20, text: "Verdict after 2+ photo cards fired on this foe", unlock: 3 },
         forge: { name: "Forge", on: "play", cost: 2, text: "Turn another card in your hand into a rare one", unlock: 4 },
-        overflow: { name: "Overflow", on: "overflow", xp: 12, text: "Earn Light while your lantern is already full", unlock: 5 }
+        overflow: { name: "Overflow", on: "overflow", xp: 12, text: "Earn Light while your lantern is already full", unlock: 5 },
+        glint: { name: "Glint", on: "viewer", xp: 8, text: "Open a photo full screen", unlock: 1, hero: "seer" },
+        squint: { name: "Squint", on: "verdict", test: t => t.zoom, xp: 14, text: "Verdict after zooming in", unlock: 1, hero: "seer" },
+        patient: { name: "Patient Eye", on: "verdict", test: t => t.seen >= 3, xp: 18, text: "Verdict after seeing 3+ photos", unlock: 2, hero: "seer" },
+        wideangle: { name: "Wide Angle", on: "verdict", test: t => t.total >= 3 && t.seen >= t.total, xp: 30, text: "Verdict after seeing every one of 3+ photos", unlock: 2, hero: "seer" },
+        moonlens: { name: "Moon Lens", on: "viewer", light: 2, text: "Open a photo full screen", unlock: 2, hero: "seer" },
+        afterimage: { name: "Afterimage", on: "verdict", test: t => t.photoFired >= 1, xp: 10, light: 1, text: "Verdict after a photo card fired on this foe", unlock: 2, hero: "seer" },
+        crosslight: { name: "Crosslight", on: "verdict", test: t => t.seen >= 2 && t.zoom, xp: 22, text: "Verdict after 2+ photos and a zoom", unlock: 3, hero: "seer" },
+        owlsight: { name: "Owl Sight", on: "verdict", test: t => t.firstOfFoe && t.total >= 2 && t.seen >= t.total, xp: 26, text: "First verdict on a foe, every photo seen", unlock: 3, hero: "seer" },
+        stillwater: { name: "Still Water", on: "verdict", test: t => t.seen >= 2 && t.light >= 3, xp: 18, text: "Verdict after 2+ photos while holding 3+ Light", unlock: 3, hero: "seer" },
+        tracer: { name: "Tracer", on: "verdict", test: t => t.photoFired >= 3, xp: 32, text: "Verdict after 3+ photo cards fired on this foe", unlock: 5, hero: "seer" },
+        pinhole: { name: "Pinhole", on: "verdict", test: t => t.seen >= 2, light: 1, text: "Verdict after seeing 2+ photos", unlock: 1, hero: "seer" },
+        vigil: { name: "Vigil", on: "verdict", test: t => t.seen >= 2 && t.details, xp: 26, text: "Verdict after 2+ photos and the details", unlock: 4, hero: "seer" },
+        silverplate: { name: "Silver Plate", on: "viewer", test: t => t.elite, xp: 20, text: "Zoom in on an elite or boss", unlock: 4, hero: "seer" },
+        halation: { name: "Halation", on: "verdict", test: t => t.zoom && t.light >= 5, xp: 24, light: 1, text: "Verdict after zooming with 5+ Light", unlock: 4, hero: "seer" },
+        parallax: { name: "Parallax", on: "verdict", test: t => t.seen >= 5, xp: 40, text: "Verdict after seeing 5+ photos", unlock: 5, hero: "seer" },
+        eyeofmoon: { name: "Eye of the Moon", on: "verdict", test: t => t.total >= 2 && t.seen >= t.total && t.zoom, xp: 36, text: "Every photo seen and a zoom", unlock: 6, hero: "seer" },
+        negative: { name: "Negative", on: "viewer", test: t => t.seen >= 2, xp: 12, text: "Zoom in after flipping through 2+ photos", unlock: 3, hero: "seer" },
+        starmap: { name: "Star Map", on: "defeat", test: t => t.photoFired >= 4, xp: 30, light: 2, text: "Vanquish a foe after 4+ photo cards fired", unlock: 6, hero: "seer" },
+        dewdrop: { name: "Dewdrop", on: "viewer", scrap: 2, text: "Open a photo full screen", unlock: 1, hero: "seer" },
+        blink: { name: "Blink", on: "verdict", test: t => t.seen >= t.total, xp: 8, text: "Verdict after seeing every photo", unlock: 2, hero: "seer" },
+        longexposure: { name: "Long Exposure", on: "verdict", test: t => t.seen >= 4 && t.zoom, xp: 44, text: "Verdict after 4+ photos and a zoom", unlock: 7, hero: "seer" },
+        moth: { name: "Moth to Flame", on: "overflow", xp: 16, text: "Earn Light while your lantern is full", unlock: 3, hero: "seer" },
+        aperture: { name: "Aperture", on: "verdict", test: t => t.total >= 4 && t.seen >= t.total, xp: 50, text: "Every one of 4+ photos seen", unlock: 8, hero: "seer" },
+        seconddawn: { name: "Second Dawn", on: "verdict", test: t => t.firstOfFoe && t.zoom, xp: 20, light: 2, text: "First verdict on a foe, after a zoom", unlock: 5, hero: "seer" },
+        glasseye: { name: "Glass Eye", on: "verdict", test: t => t.seen >= 3 && t.photoFired >= 2, xp: 48, text: "3+ photos and 2+ photo cards fired", unlock: 9, hero: "seer" },
+        develop: { name: "Develop", on: "play", cost: 2, fx: { per: ['seen', 6] }, text: "Gain 6 XP per photo seen on this item", unlock: 2, hero: "seer" },
+        contact: { name: "Contact Sheet", on: "play", cost: 2, fx: { draw: 3 }, text: "Draw 3 cards", unlock: 3, hero: "seer" },
+        exposure: { name: "Exposure", on: "play", cost: 1, fx: { crit: true, draw: 1 }, text: "Next card crits; draw 1", unlock: 1, hero: "seer" },
+        darkroom: { name: "Darkroom", on: "play", cost: 3, fx: { per: ['photoFired', 15] }, text: "Gain 15 XP per photo card fired on this foe", unlock: 5, hero: "seer" },
+        flashbulb: { name: "Flashbulb", on: "play", cost: 1, fx: { light: 2, draw: 1 }, text: "Gain 2 Light (net +1) and draw 1", unlock: 2, hero: "seer" },
+        reframe: { name: "Reframe", on: "play", cost: 2, fx: { echo: 2 }, text: "Fire the last card twice more", unlock: 4, hero: "seer" },
+        lanternlens: { name: "Lantern Lens", on: "play", cost: 4, fx: { xp: 30, crit: true }, text: "Gain 30 XP; next card crits", unlock: 6, hero: "seer" },
+        focuspull: { name: "Focus Pull", on: "play", cost: 2, fx: { per: ['seen', 4], light: 1 }, text: "4 XP per photo seen here, +1 Light", unlock: 3, hero: "seer" },
+        moonbath: { name: "Moonbath", on: "play", cost: 5, fx: { double: true, draw: 2 }, text: "This foe drops double; draw 2", unlock: 7, hero: "seer" },
+        sharpshot: { name: "Sharp Shot", on: "verdict", test: t => t.zoom && t.firstOfFoe, xp: 24, text: "First verdict on a foe after a zoom", unlock: 4, hero: "seer" },
+        wideeyed: { name: "Wide-Eyed", on: "viewer", test: t => t.seen >= 3, xp: 18, light: 1, text: "Zoom in after 3+ photos", unlock: 6, hero: "seer" },
+        nightvision: { name: "Night Vision", on: "verdict", test: t => t.zoom && t.details, xp: 40, text: "Verdict after zoom and details", unlock: 8, hero: "seer" },
+        seersmark: { name: "Seer's Mark", on: "verdict", test: t => t.total >= 2 && t.seen >= t.total && t.zoom && t.details, xp: 70, text: "Every photo, a zoom and the details", unlock: 10, hero: "seer" },
+        glimpse: { name: "Glimpse", on: "verdict", test: t => t.seen >= 1, xp: 5, text: "Verdict after seeing a photo", unlock: 1, hero: "seer" },
+        moonpool: { name: "Moon Pool", on: "defeat", test: t => t.elite, xp: 25, light: 2, text: "Vanquish an elite or boss", unlock: 5, hero: "seer" },
+        spectacle: { name: "Spectacles", on: "viewer", test: t => t.details, xp: 22, text: "Zoom in after reading the details", unlock: 7, hero: "seer" },
+        oculus: { name: "Oculus", on: "overflow", xp: 30, text: "Earn Light while your lantern is full", unlock: 9, hero: "seer" },
+        marginalia: { name: "Marginalia", on: "details", xp: 8, light: 1, text: "Read the details", unlock: 1, hero: "scribe" },
+        tally: { name: "Tally Mark", on: "check", xp: 10, text: "Confirm or correct a value", unlock: 1, hero: "scribe" },
+        errata: { name: "Errata", on: "check", test: t => t.checks >= 2, xp: 18, text: "Check a second value on one item", unlock: 2, hero: "scribe" },
+        footnote: { name: "Footnote", on: "verdict", test: t => t.details && t.checks >= 1, xp: 22, text: "Verdict after details and a checked value", unlock: 2, hero: "scribe" },
+        ledgerline: { name: "Ledger Line", on: "verdict", test: t => t.checks >= 1, xp: 14, text: "Verdict after checking a value", unlock: 2, hero: "scribe" },
+        annotate: { name: "Annotate", on: "details", test: t => t.seen >= 2, xp: 16, text: "Read the details after 2+ photos", unlock: 3, hero: "scribe" },
+        cipher: { name: "Cipher", on: "ai", xp: 12, light: 1, text: "Ask the AI about it", unlock: 3, hero: "scribe" },
+        crossref: { name: "Cross-Reference", on: "verdict", test: t => t.ai && t.details, xp: 26, text: "Verdict after the AI and the details", unlock: 3, hero: "scribe" },
+        signet: { name: "Signet", on: "verdict", test: t => t.checks >= 2, xp: 30, text: "Verdict after checking 2 values", unlock: 4, hero: "scribe" },
+        palimpsest: { name: "Palimpsest", on: "verdict", test: t => t.wasLater && t.details, xp: 30, text: "Decide a set-aside item after the details", unlock: 4, hero: "scribe" },
+        archive: { name: "Archive", on: "defeat", xp: 18, text: "Vanquish a foe", unlock: 5, hero: "scribe" },
+        inkwell: { name: "Inkwell", on: "details", scrap: 3, text: "Read the details", unlock: 1, hero: "scribe" },
+        quillstroke: { name: "Quill Stroke", on: "check", light: 1, text: "Confirm or correct a value", unlock: 2, hero: "scribe" },
+        rubric: { name: "Rubric", on: "verdict", test: t => t.details && t.zoom, xp: 28, text: "Verdict after details and a zoom", unlock: 5, hero: "scribe" },
+        colophon: { name: "Colophon", on: "verdict", test: t => t.last && t.details, xp: 40, text: "Final verdict on a foe, after the details", unlock: 6, hero: "scribe" },
+        scriptorium: { name: "Scriptorium", on: "check", test: t => t.elite, xp: 26, text: "Check a value on an elite or boss", unlock: 7, hero: "scribe" },
+        concordance: { name: "Concordance", on: "verdict", test: t => t.checks >= 2 && t.details && t.ai, xp: 60, text: "2 checks, the details and the AI", unlock: 8, hero: "scribe" },
+        vellum: { name: "Vellum", on: "details", test: t => t.elite, xp: 18, light: 1, text: "Read the details of an elite or boss", unlock: 3, hero: "scribe" },
+        gloss: { name: "Gloss", on: "verdict", test: t => t.details, xp: 12, text: "Verdict after the details", unlock: 2, hero: "scribe" },
+        redink: { name: "Red Ink", on: "check", test: t => t.checks >= 2, light: 2, text: "Check a second value on one item", unlock: 4, hero: "scribe" },
+        bookmark: { name: "Bookmark", on: "verdict", test: t => t.wasLater, xp: 18, light: 1, text: "Decide one you set aside", unlock: 3, hero: "scribe" },
+        index: { name: "Index", on: "verdict", test: t => t.details && t.seen >= 2, xp: 32, text: "Details and 2+ photos", unlock: 6, hero: "scribe" },
+        almanac: { name: "Almanac", on: "defeat", test: t => t.elite, xp: 45, text: "Vanquish an elite or boss", unlock: 9, hero: "scribe" },
+        epigraph: { name: "Epigraph", on: "verdict", test: t => t.firstOfFoe && t.details, xp: 24, light: 1, text: "First verdict on a foe, after the details", unlock: 5, hero: "scribe" },
+        transcript: { name: "Transcript", on: "ai", test: t => t.details, xp: 26, text: "Ask the AI after reading the details", unlock: 7, hero: "scribe" },
+        proofread: { name: "Proofread", on: "play", cost: 1, fx: { draw: 2 }, text: "Draw 2 cards", unlock: 1, hero: "scribe" },
+        sealedletter: { name: "Sealed Letter", on: "play", cost: 2, fx: { scrap: 12 }, text: "Gain 12 moonshards", unlock: 2, hero: "scribe" },
+        copyist: { name: "Copyist", on: "play", cost: 2, fx: { echo: 1, draw: 1 }, text: "Fire the last card again; draw 1", unlock: 3, hero: "scribe" },
+        library: { name: "Library", on: "play", cost: 3, fx: { draw: 4 }, text: "Draw 4 cards", unlock: 5, hero: "scribe" },
+        treatise: { name: "Treatise", on: "play", cost: 4, fx: { xp: 45 }, text: "Gain 45 XP", unlock: 6, hero: "scribe" },
+        inkstorm: { name: "Ink Storm", on: "play", cost: 3, fx: { per: ['checks', 15], draw: 1 }, text: "15 XP per value checked here; draw 1", unlock: 7, hero: "scribe" },
+        edict: { name: "Edict", on: "play", cost: 2, fx: { bind: true, xp: 10 }, text: "Strip this foe's trait; gain 10 XP", unlock: 4, hero: "scribe" },
+        blotter: { name: "Blotter", on: "play", cost: 1, fx: { light: 1, crit: true }, text: "Next card crits; +1 Light back", unlock: 2, hero: "scribe" },
+        chronicle: { name: "Chronicle", on: "play", cost: 5, fx: { per: ['defeats', 10] }, text: "10 XP per foe vanquished tonight", unlock: 8, hero: "scribe" },
+        scrivener: { name: "Scrivener", on: "details", test: t => t.checks >= 1, xp: 20, text: "Read the details after checking a value", unlock: 4, hero: "scribe" },
+        margins: { name: "Wide Margins", on: "verdict", test: t => t.details && t.light >= 4, xp: 26, text: "Details read, holding 4+ Light", unlock: 5, hero: "scribe" },
+        calligraphy: { name: "Calligraphy", on: "check", test: t => t.details, xp: 28, light: 1, text: "Check a value after the details", unlock: 8, hero: "scribe" },
+        lexicon: { name: "Lexicon", on: "verdict", test: t => t.details && t.checks >= 2 && t.seen >= t.total, xp: 72, text: "Details, 2 checks and every photo", unlock: 10, hero: "scribe" },
+        postscript: { name: "Postscript", on: "verdict", test: t => t.last, xp: 10, text: "Final verdict on a foe", unlock: 1, hero: "scribe" },
+        sealwax: { name: "Sealing Wax", on: "defeat", test: t => t.played >= 3, scrap: 10, xp: 10, text: "Vanquish a foe after 3+ cards", unlock: 6, hero: "scribe" },
+        candlenotes: { name: "Candle Notes", on: "details", test: t => t.zoom, xp: 34, text: "Read the details after a zoom", unlock: 9, hero: "scribe" },
+        stamp: { name: "Rubber Stamp", on: "check", test: t => t.firstOfFoe, xp: 16, text: "Check a value before your first verdict on a foe", unlock: 3, hero: "scribe" },
+        watchfire: { name: "Watchfire", on: "verdict", test: t => t.firstOfFoe, light: 2, text: "Your first verdict on a foe", unlock: 1, hero: "warden" },
+        bulwark: { name: "Bulwark", on: "defeat", xp: 15, light: 1, text: "Vanquish a foe", unlock: 1, hero: "warden" },
+        sentinel: { name: "Sentinel", on: "verdict", test: t => t.played >= 2, xp: 14, text: "Verdict after 2+ cards played on a foe", unlock: 2, hero: "warden" },
+        rampart: { name: "Rampart", on: "verdict", test: t => t.light >= 6, xp: 18, text: "Verdict while holding 6+ Light", unlock: 2, hero: "warden" },
+        lastlight: { name: "Last Light", on: "verdict", test: t => t.last, xp: 20, text: "The verdict that vanquishes a foe", unlock: 2, hero: "warden" },
+        bellringer: { name: "Bell Ringer", on: "defeat", test: t => t.played >= 4, xp: 26, text: "Vanquish a foe after 4+ cards", unlock: 3, hero: "warden" },
+        vanguard: { name: "Vanguard", on: "verdict", test: t => t.firstOfFoe && t.seen >= 2, xp: 20, light: 1, text: "First verdict on a foe, 2+ photos", unlock: 3, hero: "warden" },
+        oathkeeper: { name: "Oathkeeper", on: "defeat", test: t => t.elite, xp: 36, text: "Vanquish an elite or boss", unlock: 4, hero: "warden" },
+        hearth: { name: "Hearth", on: "active", light: 1, text: "Whenever you play an active card", unlock: 3, hero: "warden" },
+        standard: { name: "Standard", on: "verdict", test: t => t.played >= 5, xp: 30, text: "Verdict after 5+ cards on a foe", unlock: 4, hero: "warden" },
+        lanternpost: { name: "Lantern Post", on: "verdict", test: t => t.light >= 3, xp: 8, text: "Verdict while holding 3+ Light", unlock: 1, hero: "warden" },
+        shieldwall: { name: "Shield Wall", on: "verdict", test: t => t.light >= 8, xp: 32, text: "Verdict while holding 8+ Light", unlock: 5, hero: "warden" },
+        warcry: { name: "War Cry", on: "active", xp: 12, text: "Whenever you play an active card", unlock: 5, hero: "warden" },
+        finalstand: { name: "Final Stand", on: "verdict", test: t => t.last && t.boss, xp: 80, text: "The verdict that vanquishes a boss", unlock: 6, hero: "warden" },
+        tower: { name: "Watchtower", on: "defeat", light: 3, text: "Vanquish a foe", unlock: 6, hero: "warden" },
+        ember: { name: "Ember", on: "overflow", xp: 10, text: "Earn Light while your lantern is full", unlock: 2, hero: "warden" },
+        bastion: { name: "Bastion", on: "verdict", test: t => t.light >= 10, xp: 44, text: "Verdict while holding 10+ Light", unlock: 7, hero: "warden" },
+        vow: { name: "Vow", on: "verdict", test: t => t.last && t.seen >= t.total, xp: 28, text: "Final verdict on a foe, every photo seen", unlock: 3, hero: "warden" },
+        gatekeeper: { name: "Gatekeeper", on: "defeat", test: t => t.boss, xp: 60, light: 3, text: "Vanquish a boss", unlock: 8, hero: "warden" },
+        torchbearer: { name: "Torchbearer", on: "viewer", light: 1, xp: 6, text: "Open a photo full screen", unlock: 4, hero: "warden" },
+        rearguard: { name: "Rearguard", on: "verdict", test: t => t.wasLater, light: 2, xp: 12, text: "Decide one you set aside", unlock: 5, hero: "warden" },
+        steadfast: { name: "Steadfast", on: "verdict", test: t => t.played >= 3 && t.seen >= 2, xp: 34, text: "3+ cards played and 2+ photos seen", unlock: 7, hero: "warden" },
+        dawnguard: { name: "Dawn Guard", on: "verdict", test: t => t.firstOfFoe && t.elite, xp: 40, light: 2, text: "First verdict on an elite or boss", unlock: 9, hero: "warden" },
+        patrol: { name: "Night Patrol", on: "defeat", scrap: 4, xp: 6, text: "Vanquish a foe", unlock: 2, hero: "warden" },
+        beacon: { name: "Beacon", on: "play", cost: 1, fx: { light: 3 }, text: "Gain 3 Light (net +2)", unlock: 1, hero: "warden" },
+        rallycry: { name: "Rally Cry", on: "play", cost: 2, fx: { draw: 2, light: 1 }, text: "Draw 2; gain 1 Light", unlock: 2, hero: "warden" },
+        bastionrite: { name: "Rite of Bastion", on: "play", cost: 3, fx: { per: ['light', 5] }, text: "Gain 5 XP per Light left after paying", unlock: 4, hero: "warden" },
+        charge: { name: "Charge", on: "play", cost: 2, fx: { xp: 20, crit: true }, text: "Gain 20 XP; next card crits", unlock: 3, hero: "warden" },
+        vigilance: { name: "Vigilance", on: "play", cost: 3, fx: { double: true }, text: "This foe drops double XP and shards", unlock: 5, hero: "warden" },
+        lanternwall: { name: "Lantern Wall", on: "play", cost: 4, fx: { per: ['played', 8] }, text: "Gain 8 XP per card played on this foe", unlock: 6, hero: "warden" },
+        signalfire: { name: "Signal Fire", on: "play", cost: 5, fx: { xp: 40, light: 3 }, text: "Gain 40 XP and 3 Light", unlock: 7, hero: "warden" },
+        muster: { name: "Muster", on: "play", cost: 1, fx: { draw: 1, crit: true }, text: "Draw 1; next card crits", unlock: 2, hero: "warden" },
+        ironvow: { name: "Iron Vow", on: "play", cost: 4, fx: { echo: 2, light: 2 }, text: "Fire the last card twice; +2 Light", unlock: 8, hero: "warden" },
+        brazier: { name: "Brazier", on: "verdict", test: t => t.light >= 4 && t.firstOfFoe, xp: 18, text: "First verdict on a foe with 4+ Light", unlock: 3, hero: "warden" },
+        keep: { name: "The Keep", on: "active", test: t => t.elite, xp: 20, text: "Play an active card against an elite or boss", unlock: 6, hero: "warden" },
+        guardpost: { name: "Guard Post", on: "verdict", test: t => t.played >= 1 && t.seen >= 2, xp: 16, text: "A card played and 2+ photos seen", unlock: 4, hero: "warden" },
+        ward: { name: "Moon Ward", on: "overflow", xp: 18, scrap: 2, text: "Earn Light while your lantern is full", unlock: 5, hero: "warden" },
+        unbroken: { name: "Unbroken", on: "verdict", test: t => t.last && t.elite && t.seen >= t.total, xp: 90, text: "Final verdict on an elite or boss, every photo", unlock: 10, hero: "warden" },
+        sentry: { name: "Sentry", on: "verdict", test: t => t.played >= 1, xp: 6, text: "Verdict after a card played on a foe", unlock: 1, hero: "warden" },
+        bonfire: { name: "Bonfire", on: "defeat", test: t => t.played >= 5, xp: 40, light: 2, text: "Vanquish a foe after 5+ cards", unlock: 8, hero: "warden" },
+        lampwick: { name: "Lamp Wick", on: "active", light: 1, xp: 6, text: "Whenever you play an active card", unlock: 7, hero: "warden" },
+        gauntlet: { name: "Gauntlet", on: "verdict", test: t => t.light >= 6 && t.elite, xp: 46, text: "Verdict on an elite with 6+ Light", unlock: 9, hero: "warden" },
+        stride: { name: "Long Stride", on: "path", xp: 12, light: 1, text: "Choose a path", unlock: 1, hero: "wayfarer" },
+        waymark: { name: "Waymark", on: "verdict", test: t => t.firstOfFoe, xp: 10, scrap: 2, text: "Your first verdict on a foe", unlock: 1, hero: "wayfarer" },
+        coinpurse: { name: "Coin Purse", on: "defeat", scrap: 6, text: "Vanquish a foe", unlock: 1, hero: "wayfarer" },
+        milestone: { name: "Milestone", on: "defeat", test: t => t.defeats >= 3, xp: 20, text: "Vanquish your 3rd+ foe tonight", unlock: 2, hero: "wayfarer" },
+        crossroads: { name: "Crossroads", on: "path", scrap: 6, text: "Choose a path", unlock: 2, hero: "wayfarer" },
+        campfire: { name: "Campfire Tale", on: "event", xp: 20, text: "Stop at a camp, trader, cache or mystery", unlock: 2, hero: "wayfarer" },
+        wanderlust: { name: "Wanderlust", on: "path", test: t => t.paths >= 3, xp: 25, text: "Choose your 3rd+ path tonight", unlock: 3, hero: "wayfarer" },
+        heavypack: { name: "Heavy Pack", on: "verdict", test: t => t.scrap >= 30, xp: 18, text: "Verdict while carrying 30+ shards", unlock: 3, hero: "wayfarer" },
+        roadsong: { name: "Road Song", on: "verdict", test: t => t.seen >= 2, xp: 10, scrap: 1, text: "Verdict after 2+ photos", unlock: 2, hero: "wayfarer" },
+        lodestar: { name: "Lodestar", on: "path", light: 3, text: "Choose a path", unlock: 4, hero: "wayfarer" },
+        pilgrim: { name: "Pilgrim", on: "event", scrap: 10, light: 1, text: "Stop at a camp, trader, cache or mystery", unlock: 4, hero: "wayfarer" },
+        signpost: { name: "Signpost", on: "viewer", scrap: 2, xp: 4, text: "Open a photo full screen", unlock: 1, hero: "wayfarer" },
+        caravan: { name: "Caravan", on: "defeat", test: t => t.scrap >= 40, xp: 35, text: "Vanquish a foe carrying 40+ shards", unlock: 5, hero: "wayfarer" },
+        toll: { name: "Toll Gate", on: "defeat", test: t => t.elite, scrap: 15, text: "Vanquish an elite or boss", unlock: 3, hero: "wayfarer" },
+        dustymap: { name: "Dusty Map", on: "details", scrap: 3, xp: 6, text: "Read the details", unlock: 2, hero: "wayfarer" },
+        farhorizon: { name: "Far Horizon", on: "verdict", test: t => t.act >= 2 && t.seen >= 2, xp: 30, text: "2+ photos, past the first act", unlock: 6, hero: "wayfarer" },
+        trailmix: { name: "Trail Rations", on: "event", light: 3, text: "Stop at a camp, trader, cache or mystery", unlock: 3, hero: "wayfarer" },
+        nomad: { name: "Nomad", on: "path", test: t => t.light >= 3, xp: 22, scrap: 4, text: "Choose a path holding 3+ Light", unlock: 5, hero: "wayfarer" },
+        hoard: { name: "Hoard", on: "verdict", test: t => t.scrap >= 60, xp: 34, text: "Verdict while carrying 60+ shards", unlock: 6, hero: "wayfarer" },
+        bridge: { name: "Old Bridge", on: "verdict", test: t => t.wasLater, xp: 20, scrap: 3, text: "Decide one you set aside", unlock: 4, hero: "wayfarer" },
+        compassrose: { name: "Compass Rose", on: "path", test: t => t.paths >= 5, xp: 45, text: "Choose your 5th+ path tonight", unlock: 7, hero: "wayfarer" },
+        innkeeper: { name: "Innkeeper", on: "event", test: t => t.events >= 2, xp: 35, scrap: 8, text: "Your 2nd+ stop tonight", unlock: 7, hero: "wayfarer" },
+        footsore: { name: "Footsore", on: "verdict", test: t => t.last, scrap: 5, text: "Final verdict on a foe", unlock: 3, hero: "wayfarer" },
+        moonroad: { name: "Moon Road", on: "defeat", test: t => t.act >= 3, xp: 45, scrap: 6, text: "Vanquish a foe from act 3 on", unlock: 8, hero: "wayfarer" },
+        tinker: { name: "Tinker's Cart", on: "event", light: 2, scrap: 3, text: "Stop at a camp, trader, cache or mystery", unlock: 5, hero: "wayfarer" },
+        guide: { name: "Lantern Guide", on: "verdict", test: t => t.seen >= t.total && t.scrap >= 30, xp: 44, text: "Every photo seen, 30+ shards carried", unlock: 9, hero: "wayfarer" },
+        ferryman: { name: "Ferryman", on: "path", test: t => t.elite, scrap: 15, xp: 15, text: "Choose a path while facing an elite", unlock: 8, hero: "wayfarer" },
+        homeward: { name: "Homeward", on: "defeat", test: t => t.boss && t.scrap >= 50, xp: 90, text: "Vanquish a boss carrying 50+ shards", unlock: 10, hero: "wayfarer" },
+        shortcut: { name: "Shortcut", on: "play", cost: 1, fx: { draw: 2 }, text: "Draw 2 cards", unlock: 1, hero: "wayfarer" },
+        barter: { name: "Barter", on: "play", cost: 1, fx: { scrap: 10 }, text: "Gain 10 moonshards", unlock: 2, hero: "wayfarer" },
+        spendthrift: { name: "Spendthrift", on: "play", cost: 2, fx: { per: ['scrap', 3] }, text: "3 XP per 10 shards you carry", unlock: 3, hero: "wayfarer" },
+        pathfinder: { name: "Pathfinder", on: "play", cost: 2, fx: { light: 1, draw: 2 }, text: "Draw 2; +1 Light back", unlock: 3, hero: "wayfarer" },
+        goldenmile: { name: "Golden Mile", on: "play", cost: 3, fx: { per: ['defeats', 6], scrap: 6 }, text: "6 XP per foe tonight; +6 shards", unlock: 5, hero: "wayfarer" },
+        roadmap: { name: "Road Map", on: "play", cost: 2, fx: { per: ['paths', 10] }, text: "10 XP per path chosen tonight", unlock: 4, hero: "wayfarer" },
+        lucky: { name: "Lucky Coin", on: "play", cost: 1, fx: { crit: true, scrap: 3 }, text: "Next card crits; +3 shards", unlock: 2, hero: "wayfarer" },
+        journey: { name: "The Journey", on: "play", cost: 5, fx: { per: ['events', 20], draw: 1 }, text: "20 XP per stop tonight; draw 1", unlock: 7, hero: "wayfarer" },
+        payday: { name: "Payday", on: "play", cost: 3, fx: { double: true, scrap: 5 }, text: "This foe drops double; +5 shards", unlock: 6, hero: "wayfarer" },
+        detour: { name: "Detour", on: "play", cost: 4, fx: { echo: 2, scrap: 5 }, text: "Fire the last card twice; +5 shards", unlock: 8, hero: "wayfarer" },
+        weatherwise: { name: "Weatherwise", on: "overflow", scrap: 4, xp: 8, text: "Earn Light while your lantern is full", unlock: 6, hero: "wayfarer" },
+        pathworn: { name: "Path-Worn Boots", on: "verdict", test: t => t.paths >= 2 && t.seen >= 2, xp: 18, text: "2+ paths chosen, 2+ photos seen", unlock: 4, hero: "wayfarer" },
+        emberroad: { name: "Ember Road", on: "event", xp: 50, text: "Stop at a camp, trader, cache or mystery", unlock: 9, hero: "wayfarer" },
+        wayshrine: { name: "Wayshrine", on: "defeat", light: 2, text: "Vanquish a foe", unlock: 2, hero: "wayfarer" },
+        stargazer: { name: "Stargazer", on: "verdict", test: t => t.zoom && t.scrap >= 20, xp: 30, text: "Zoomed in, 20+ shards carried", unlock: 7, hero: "wayfarer" },
+        temper: { name: "Temper", on: "verdict", test: t => t.ups >= 1, xp: 12, text: "Verdict while you own an upgraded card", unlock: 1, hero: "moonsmith" },
+        quench: { name: "Quench", on: "upgrade", xp: 15, light: 1, text: "Whenever a card is upgraded", unlock: 1, hero: "moonsmith" },
+        slag: { name: "Slag", on: "burn", scrap: 8, text: "Whenever a card is burned", unlock: 1, hero: "moonsmith" },
+        anvilsong: { name: "Anvil Song", on: "verdict", test: t => t.ups >= 3, xp: 20, text: "Verdict while you own 3+ upgraded cards", unlock: 2, hero: "moonsmith" },
+        bellows: { name: "Bellows", on: "active", light: 1, text: "Whenever you play an active card", unlock: 2, hero: "moonsmith" },
+        filings: { name: "Iron Filings", on: "burn", xp: 18, text: "Whenever a card is burned", unlock: 2, hero: "moonsmith" },
+        annealing: { name: "Annealing", on: "upgrade", light: 2, text: "Whenever a card is upgraded", unlock: 3, hero: "moonsmith" },
+        hallmark: { name: "Hallmark", on: "verdict", test: t => t.ups >= 5, xp: 28, text: "Verdict while you own 5+ upgraded cards", unlock: 3, hero: "moonsmith" },
+        crucible: { name: "Crucible", on: "burn", xp: 20, light: 2, text: "Whenever a card is burned", unlock: 4, hero: "moonsmith" },
+        masterwork: { name: "Masterwork", on: "verdict", test: t => t.ups >= 8, xp: 40, text: "Verdict while you own 8+ upgraded cards", unlock: 6, hero: "moonsmith" },
+        rivet: { name: "Rivet", on: "check", xp: 8, light: 1, text: "Confirm or correct a value", unlock: 1, hero: "moonsmith" },
+        whitehot: { name: "White Hot", on: "verdict", test: t => t.light >= 6 && t.ups >= 2, xp: 26, text: "6+ Light and 2+ upgraded cards", unlock: 4, hero: "moonsmith" },
+        lean: { name: "Lean Deck", on: "verdict", test: t => t.deck <= 8, xp: 26, text: "Verdict while your deck has 8 or fewer cards", unlock: 5, hero: "moonsmith" },
+        honed: { name: "Honed Edge", on: "verdict", test: t => t.seen >= 2 && t.ups >= 2, xp: 20, text: "2+ photos and 2+ upgraded cards", unlock: 3, hero: "moonsmith" },
+        forgefire: { name: "Forgefire", on: "upgrade", xp: 28, text: "Whenever a card is upgraded", unlock: 5, hero: "moonsmith" },
+        ashes: { name: "From Ashes", on: "burn", test: t => t.burned >= 3, xp: 40, text: "Burn your 3rd+ card tonight", unlock: 6, hero: "moonsmith" },
+        assay: { name: "Assay", on: "viewer", xp: 8, scrap: 1, text: "Open a photo full screen", unlock: 2, hero: "moonsmith" },
+        moonsteel: { name: "Moonsteel", on: "verdict", test: t => t.ups >= 10, xp: 50, text: "Verdict while you own 10+ upgraded cards", unlock: 7, hero: "moonsmith" },
+        smeltery: { name: "Smeltery", on: "defeat", test: t => t.burned >= 2, xp: 35, scrap: 6, text: "Vanquish a foe after 2+ burns tonight", unlock: 7, hero: "moonsmith" },
+        tongs: { name: "Tongs", on: "verdict", test: t => t.zoom, xp: 10, light: 1, text: "Verdict after zooming in", unlock: 2, hero: "moonsmith" },
+        ingot: { name: "Ingot", on: "defeat", scrap: 6, xp: 8, text: "Vanquish a foe", unlock: 3, hero: "moonsmith" },
+        whetted: { name: "Whetted", on: "verdict", test: t => t.firstOfFoe && t.ups >= 2, xp: 22, light: 1, text: "First verdict on a foe, 2+ upgraded cards", unlock: 4, hero: "moonsmith" },
+        tempered: { name: "Tempered Will", on: "verdict", test: t => t.ups >= 6 && t.seen >= t.total, xp: 52, text: "6+ upgraded cards and every photo", unlock: 8, hero: "moonsmith" },
+        starmetal: { name: "Star Metal", on: "upgrade", test: t => t.ups >= 6, xp: 50, light: 2, text: "Upgrade a card while owning 6+ upgraded", unlock: 9, hero: "moonsmith" },
+        sparks: { name: "Sparks", on: "verdict", test: t => t.played >= 1, light: 1, text: "Verdict after a card played on a foe", unlock: 1, hero: "moonsmith" },
+        refine: { name: "Refine", on: "details", test: t => t.ups >= 2, xp: 20, text: "Read the details with 2+ upgraded cards", unlock: 5, hero: "moonsmith" },
+        goldleaf: { name: "Gold Leaf", on: "check", test: t => t.ups >= 3, xp: 24, text: "Check a value with 3+ upgraded cards", unlock: 6, hero: "moonsmith" },
+        greatwork: { name: "Great Work", on: "verdict", test: t => t.ups >= 12 && t.seen >= 2, xp: 80, text: "12+ upgraded cards and 2+ photos", unlock: 10, hero: "moonsmith" },
+        hammer: { name: "Moon Hammer", on: "play", cost: 2, fx: { upgrade: 1 }, text: "Upgrade a random card", unlock: 1, hero: "moonsmith" },
+        smelt: { name: "Smelt", on: "play", cost: 1, fx: { burn: { scrap: 12, xp: 10 } }, text: "Burn another card in hand: +12 shards, +10 XP", unlock: 1, hero: "moonsmith" },
+        doubleforge: { name: "Double Forge", on: "play", cost: 3, fx: { upgrade: 2 }, text: "Upgrade 2 random cards", unlock: 3, hero: "moonsmith" },
+        recast: { name: "Recast", on: "play", cost: 2, fx: { forge: true }, text: "Turn another card in hand into a rare one", unlock: 2, hero: "moonsmith" },
+        heatwave: { name: "Heat Wave", on: "play", cost: 2, fx: { per: ['ups', 6] }, text: "6 XP per upgraded card you own", unlock: 4, hero: "moonsmith" },
+        melt: { name: "Melt Down", on: "play", cost: 1, fx: { burn: { light: 3 } }, text: "Burn another card in hand: +3 Light", unlock: 3, hero: "moonsmith" },
+        goldsmith: { name: "Goldsmith", on: "play", cost: 3, fx: { upgrade: 1, scrap: 10 }, text: "Upgrade a random card; +10 shards", unlock: 5, hero: "moonsmith" },
+        phoenix: { name: "Phoenix Ash", on: "play", cost: 4, fx: { per: ['burned', 20], draw: 1 }, text: "20 XP per card burned tonight; draw 1", unlock: 7, hero: "moonsmith" },
+        starforge: { name: "Star Forge", on: "play", cost: 5, fx: { upgrade: 3, light: 1 }, text: "Upgrade 3 random cards; +1 Light", unlock: 8, hero: "moonsmith" },
+        anvilstrike: { name: "Anvil Strike", on: "play", cost: 3, fx: { xp: 25, upgrade: 1 }, text: "Gain 25 XP; upgrade a random card", unlock: 6, hero: "moonsmith" },
+        cinder: { name: "Cinder", on: "overflow", xp: 14, text: "Earn Light while your lantern is full", unlock: 3, hero: "moonsmith" },
+        forgemaster: { name: "Forgemaster", on: "active", test: t => t.ups >= 5, xp: 20, light: 1, text: "Play an active card with 5+ upgraded", unlock: 9, hero: "moonsmith" },
+        brand: { name: "Brand", on: "defeat", test: t => t.ups >= 3, xp: 26, text: "Vanquish a foe with 3+ upgraded cards", unlock: 4, hero: "moonsmith" },
+        mould: { name: "Casting Mould", on: "upgrade", scrap: 10, xp: 10, text: "Whenever a card is upgraded", unlock: 7, hero: "moonsmith" },
+        silversmith: { name: "Silversmith", on: "burn", xp: 30, scrap: 6, text: "Whenever a card is burned", unlock: 8, hero: "moonsmith" },
+        tracker: { name: "Tracker", on: "verdict", test: t => t.seen >= 2, xp: 10, scrap: 1, text: "Verdict after 2+ photos", unlock: 1, hero: "huntress" },
+        snare: { name: "Snare", on: "wager", xp: 12, light: 1, text: "Stake a wager", unlock: 1, hero: "huntress" },
+        trophy: { name: "Trophy", on: "defeat", test: t => t.elite, xp: 25, scrap: 4, text: "Vanquish an elite or boss", unlock: 1, hero: "huntress" },
+        stalk: { name: "Stalk", on: "verdict", test: t => t.wager, xp: 16, text: "Verdict while your wager holds", unlock: 2, hero: "huntress" },
+        quarry: { name: "Quarry", on: "verdict", test: t => t.elite && t.seen >= 2, xp: 22, text: "2+ photos of an elite or boss", unlock: 2, hero: "huntress" },
+        pelt: { name: "Pelt", on: "defeat", test: t => t.wager, scrap: 10, text: "Vanquish a foe with your wager unbroken", unlock: 2, hero: "huntress" },
+        pounce: { name: "Pounce", on: "verdict", test: t => t.firstOfFoe && t.elite, xp: 26, text: "First verdict on an elite or boss", unlock: 3, hero: "huntress" },
+        bloodmoon: { name: "Blood Moon", on: "wager", light: 3, text: "Stake a wager", unlock: 3, hero: "huntress" },
+        hound: { name: "Moonhound", on: "viewer", test: t => t.elite, xp: 14, light: 1, text: "Zoom in on an elite or boss", unlock: 3, hero: "huntress" },
+        lure: { name: "Lure", on: "verdict", test: t => t.wager && t.seen >= t.total, xp: 30, text: "Every photo seen while your wager holds", unlock: 4, hero: "huntress" },
+        apex: { name: "Apex", on: "defeat", test: t => t.boss, xp: 70, text: "Vanquish a boss", unlock: 6, hero: "huntress" },
+        arrow: { name: "Silver Arrow", on: "viewer", xp: 6, light: 1, text: "Open a photo full screen", unlock: 1, hero: "huntress" },
+        spoor: { name: "Spoor", on: "details", xp: 10, text: "Read the details", unlock: 2, hero: "huntress" },
+        ambush: { name: "Ambush", on: "verdict", test: t => t.firstOfFoe && t.wager, xp: 26, light: 1, text: "First verdict on a foe you wagered on", unlock: 4, hero: "huntress" },
+        highstakes: { name: "High Stakes", on: "verdict", test: t => t.wager && t.elite, xp: 34, text: "Verdict on an elite while your wager holds", unlock: 5, hero: "huntress" },
+        taxidermy: { name: "Taxidermy", on: "defeat", test: t => t.elite && t.wager, xp: 40, scrap: 8, text: "Vanquish an elite with your wager unbroken", unlock: 5, hero: "huntress" },
+        moonbow: { name: "Moonbow", on: "verdict", test: t => t.zoom && t.elite, xp: 30, text: "Zoomed in on an elite or boss", unlock: 6, hero: "huntress" },
+        pack: { name: "Hunting Pack", on: "verdict", test: t => t.played >= 3 && t.elite, xp: 38, text: "3+ cards played on an elite", unlock: 7, hero: "huntress" },
+        scentmark: { name: "Scent Mark", on: "verdict", test: t => t.zoom, xp: 12, text: "Verdict after zooming in", unlock: 3, hero: "huntress" },
+        deadeye: { name: "Deadeye", on: "verdict", test: t => t.wager && t.zoom && t.seen >= t.total, xp: 55, text: "Wager holds, zoomed, every photo", unlock: 8, hero: "huntress" },
+        wolfmoon: { name: "Wolf Moon", on: "wager", test: t => t.elite, xp: 40, text: "Stake a wager on an elite or boss", unlock: 8, hero: "huntress" },
+        crown: { name: "Hunter's Crown", on: "defeat", test: t => t.boss && t.wager, xp: 120, text: "Vanquish a boss with your wager unbroken", unlock: 10, hero: "huntress" },
+        fang: { name: "Fang", on: "defeat", xp: 14, light: 1, text: "Vanquish a foe", unlock: 4, hero: "huntress" },
+        bravado: { name: "Bravado", on: "wager", scrap: 8, xp: 8, text: "Stake a wager", unlock: 5, hero: "huntress" },
+        thicket: { name: "Thicket", on: "verdict", test: t => t.details, xp: 12, text: "Verdict after the details", unlock: 2, hero: "huntress" },
+        tusks: { name: "Tusk Charm", on: "viewer", test: t => t.wager, xp: 20, text: "Zoom in while your wager holds", unlock: 7, hero: "huntress" },
+        nightstalker: { name: "Nightstalker", on: "verdict", test: t => t.elite && t.seen >= t.total && t.details, xp: 60, text: "Elite: every photo and the details", unlock: 9, hero: "huntress" },
+        huntersmoon: { name: "Hunter's Moon", on: "overflow", xp: 16, text: "Earn Light while your lantern is full", unlock: 6, hero: "huntress" },
+        mark: { name: "Hunter's Mark", on: "play", cost: 2, fx: { prey: true }, text: "This foe gives +50% XP and 5 shards", unlock: 1, hero: "huntress" },
+        gambit: { name: "Gambit", on: "play", cost: 1, fx: { wager: 8 }, text: "Stake 8 shards on this foe for free", unlock: 1, hero: "huntress" },
+        volley: { name: "Volley", on: "play", cost: 2, fx: { echo: 1, draw: 1 }, text: "Fire the last card again; draw 1", unlock: 2, hero: "huntress" },
+        trap: { name: "Bear Trap", on: "play", cost: 2, fx: { bind: true, draw: 1 }, text: "Strip this foe's trait; draw 1", unlock: 3, hero: "huntress" },
+        bait: { name: "Bait", on: "play", cost: 1, fx: { scrap: 6, light: 1 }, text: "+6 shards; +1 Light back", unlock: 2, hero: "huntress" },
+        killshot: { name: "Killshot", on: "play", cost: 3, fx: { crit: true, prey: true }, text: "Next card crits; mark this foe", unlock: 5, hero: "huntress" },
+        allin: { name: "All In", on: "play", cost: 3, fx: { wager: 20 }, text: "Stake 20 shards on this foe for free", unlock: 6, hero: "huntress" },
+        hunt: { name: "The Hunt", on: "play", cost: 4, fx: { per: ['played', 10], prey: true }, text: "10 XP per card played here; mark it", unlock: 7, hero: "huntress" },
+        fletch: { name: "Fletching", on: "play", cost: 2, fx: { draw: 3 }, text: "Draw 3 cards", unlock: 4, hero: "huntress" },
+        trophywall: { name: "Trophy Wall", on: "play", cost: 5, fx: { per: ['defeats', 12] }, text: "12 XP per foe vanquished tonight", unlock: 8, hero: "huntress" },
+        feint: { name: "Feint", on: "active", test: t => t.elite, xp: 12, text: "Play an active card against an elite", unlock: 3, hero: "huntress" },
+        snarewire: { name: "Snare Wire", on: "check", test: t => t.elite, xp: 18, text: "Check a value on an elite or boss", unlock: 4, hero: "huntress" },
+        houndsnose: { name: "Hound's Nose", on: "details", test: t => t.elite, xp: 22, light: 1, text: "Read the details of an elite or boss", unlock: 5, hero: "huntress" },
+        lastarrow: { name: "Last Arrow", on: "verdict", test: t => t.last && t.elite, xp: 44, text: "The verdict that vanquishes an elite", unlock: 7, hero: "huntress" },
+        chase: { name: "The Chase", on: "path", xp: 30, light: 2, text: "Choose a path", unlock: 9, hero: "huntress" },
+        moonshard: { name: "Moonshard", on: "defeat", scrap: 4, text: "Vanquish a foe", unlock: 1 },
+        nightowl: { name: "Night Owl", on: "verdict", test: t => t.seen >= 2 && t.details, xp: 18, text: "2+ photos and the details", unlock: 2 },
+        candle: { name: "Candle", on: "verdict", light: 1, text: "Any verdict", unlock: 1 },
+        lullaby: { name: "Lullaby", on: "verdict", test: t => t.wasLater, xp: 15, scrap: 3, text: "Decide one you set aside", unlock: 3 },
+        pathlight: { name: "Path Light", on: "path", light: 2, text: "Choose a path", unlock: 2 },
+        restful: { name: "Restful Night", on: "event", xp: 15, light: 1, text: "Stop at a camp, trader, cache or mystery", unlock: 3 },
+        whisper: { name: "Whisper", on: "ai", scrap: 4, light: 1, text: "Ask the AI about it", unlock: 2 },
+        ripple: { name: "Ripple", on: "verdict", test: t => t.played >= 2 && t.zoom, xp: 22, text: "2+ cards played and a zoom", unlock: 4 },
+        moonflower: { name: "Moonflower", on: "defeat", test: t => t.seen >= 2, xp: 20, light: 1, text: "Vanquish a foe after 2+ photos on the last item", unlock: 5 },
+        fireflies: { name: "Fireflies", on: "overflow", scrap: 5, text: "Earn Light while your lantern is full", unlock: 3 },
+        mothwing: { name: "Moth Wing", on: "viewer", test: t => t.details, xp: 14, light: 1, text: "Zoom in after reading the details", unlock: 4 },
+        tidewater: { name: "Tidewater", on: "verdict", test: t => t.act >= 2 && t.details, xp: 30, text: "Details read, past the first act", unlock: 6 },
+        glasschime: { name: "Glass Chime", on: "verdict", test: t => t.act >= 4 && t.seen >= 2, xp: 40, text: "2+ photos, in act 4 or later", unlock: 7 },
+        rustbloom: { name: "Rust Bloom", on: "verdict", test: t => t.act >= 3 && t.zoom, xp: 34, text: "Zoomed in, in act 3 or later", unlock: 6 },
+        eclipse: { name: "Eclipse", on: "defeat", test: t => t.act >= 5, xp: 70, text: "Vanquish a foe in the Moonless Depot", unlock: 9 },
+        lanternoil: { name: "Lantern Oil", on: "play", cost: 1, fx: { light: 2 }, text: "Gain 2 Light (net +1)", unlock: 1 },
+        stardust: { name: "Stardust", on: "play", cost: 2, fx: { scrap: 6, draw: 1 }, text: "+6 shards; draw 1", unlock: 2 },
+        moonwell: { name: "Moon Well", on: "play", cost: 3, fx: { light: 2, draw: 2 }, text: "Draw 2; gain 2 Light", unlock: 4 },
+        wish: { name: "Wishing Star", on: "play", cost: 4, fx: { xp: 25, scrap: 10 }, text: "Gain 25 XP and 10 shards", unlock: 6 },
+        cometail: { name: "Comet Tail", on: "play", cost: 5, fx: { echo: 3 }, text: "Fire the last card three more times", unlock: 8 },
+        hush: { name: "Hush", on: "play", cost: 2, fx: { crit: true, light: 1 }, text: "Next card crits; +1 Light back", unlock: 3 },
+        tide: { name: "Turning Tide", on: "play", cost: 3, fx: { draw: 2, crit: true }, text: "Draw 2; next card crits", unlock: 5 },
+        lantern2: { name: "Old Lantern", on: "viewer", light: 1, text: "Open a photo full screen", unlock: 1 },
+        feather: { name: "Owl Feather", on: "details", light: 1, xp: 4, text: "Read the details", unlock: 2 },
+        silverthread: { name: "Silver Thread", on: "check", xp: 12, light: 1, text: "Confirm or correct a value", unlock: 4 },
+        moonlit: { name: "Moonlit", on: "verdict", test: t => t.light >= 5 && t.seen >= t.total, xp: 26, text: "Every photo seen with 5+ Light", unlock: 5 },
+        deepnight: { name: "Deep Night", on: "verdict", test: t => t.seen >= 3 && t.details && t.zoom, xp: 46, text: "3+ photos, details and a zoom", unlock: 7 },
+        dawnchorus: { name: "Dawn Chorus", on: "defeat", test: t => t.played >= 4 && t.elite, xp: 50, text: "Vanquish an elite after 4+ cards", unlock: 8 },
+        allseeing: { name: "All-Seeing", on: "verdict", test: t => t.total >= 2 && t.seen >= t.total && t.details && t.checks >= 1 && t.zoom, xp: 100, text: "Every photo, zoom, details and a check", unlock: 10 },
+        graveyard: { name: "Night Shift", on: "defeat", test: t => t.defeats >= 5, xp: 25, light: 2, text: "Vanquish your 5th+ foe tonight", unlock: 3 }
     };
+    // The first cards: hero families, and active effects as data (fx) so every active card shares one engine.
+    for (const [hero, ids] of Object.entries({ seer: ["gaze", "panorama", "loupe", "deep", "chain"], scribe: ["ledger", "notes", "quiet", "inktrail", "oracle", "revisit"],
+        warden: ["dawn", "closer", "rally", "fullmoon", "flare", "bind"] })) ids.forEach(id => { CARDS[id].hero = hero; });
+    Object.entries({ flare: { double: true }, wind: { draw: 2 }, whet: { upgrade: 1 }, tithe: { scrap: 8 }, insight: { crit: true }, surge: { xp: 40 },
+        echo: { echo: 1 }, bind: { bind: true }, forge: { forge: true }, purge: { burn: { scrap: 10 } } }).forEach(([id, fx]) => { CARDS[id].fx = fx; });
     const PHOTO_CARDS = new Set(["gaze", "panorama", "deep", "loupe"]);
     const INK_CARDS = new Set(["ledger", "notes", "inktrail"]);
     // Each class starts with a deck that rewards a different real habit.
     const CLASSES = {
         seer: { name: "Seer", text: "Rewards looking at every photo.", deck: ["gaze", "gaze", "panorama", "loupe", "flare"] },
         scribe: { name: "Scribe", text: "Rewards checking values and reading the details.", deck: ["ledger", "ledger", "notes", "quiet", "wind"] },
-        warden: { name: "Warden", text: "Builds Light and finishes foes.", deck: ["dawn", "dawn", "closer", "rally", "flare"] }
+        warden: { name: "Warden", text: "Builds Light and finishes foes.", deck: ["dawn", "dawn", "closer", "rally", "flare"] },
+        wayfarer: { name: "Wayfarer", text: "Rewards the road: paths, stops and shards.", deck: ["stride", "stride", "waymark", "coinpurse", "shortcut"] },
+        moonsmith: { name: "Moonsmith", text: "Upgrades and burns cards into power.", deck: ["temper", "quench", "slag", "hammer", "smelt"] },
+        huntress: { name: "Huntress", text: "Hunts elites and stakes wagers.", deck: ["tracker", "tracker", "snare", "trophy", "gambit"] }
     };
     const STARTER = CLASSES.seer.deck;
-    // Twelve kinds of Defect; each group gets one by its id, the last group is always the Sovereign.
-    const SPECIES = [["scratcher", "Scratcher"], ["needlewisp", "Needlewisp"], ["thumper", "Thumper"], ["anvilmole", "Anvil Mole"],
-        ["rustmoth", "Rustmoth"], ["barnacle", "Barnacle Crone"], ["dripling", "Dripling"], ["smearhound", "Smearhound"],
-        ["glasswing", "Glasswing"], ["cracklejack", "Cracklejack"], ["boltgnaw", "Boltgnaw"], ["springjack", "Springjack"]];
+    // Twenty-four kinds of Defect per region; a group's kind is picked so none repeats within a week.
+    const SPECIES = [["scratcher", "Scratcher"], ["needlewisp", "Needlewisp"], ["thumper", "Thumper"], ["anvilmole", "Anvil Mole"], ["rustmoth", "Rustmoth"], ["barnacle", "Barnacle Crone"], ["dripling", "Dripling"], ["smearhound", "Smearhound"], ["glasswing", "Glasswing"], ["cracklejack", "Cracklejack"], ["boltgnaw", "Boltgnaw"], ["springjack", "Springjack"], ["lugnut", "Lugnut Lurker"], ["dentling", "Dentling"], ["swirlmark", "Swirl Mark"], ["tarspot", "Tar Spot"], ["chipwing", "Chip Wing"], ["seamcreeper", "Seam Creeper"], ["gapsprite", "Gap Sprite"], ["sapdrip", "Sap Drip"], ["pecker", "Pecker"], ["hailhob", "Hail Hob"], ["scuffmite", "Scuff Mite"], ["peelwraith", "Peel Wraith"]];
     const RELICS = {
         lens: { name: "Brass Lens", text: "Photo cards give +50% XP" },
         ink: { name: "Ink of Night", text: "Ledger & Notes cards give +50% XP" },
@@ -171,24 +462,31 @@
     const REGIONS = [
         { name: "The Moon Road", species: SPECIES, boss: ["sovereign", "The Pale Sovereign"], lore: "" },
         { name: "The Drowned Yard", boss: ["lamplighter", "The Hollow Lamplighter"], lore: "Past the Sovereign's gate the road sinks into the sea. Cars stand half-drowned under a lighthouse that has not turned in years.",
-            species: [["rainwight", "Rainwight"], ["saltgnawer", "Salt Gnawer"], ["puddlejack", "Puddlejack"], ["fogmoth", "Fogmoth"], ["hingehound", "Hinge Hound"], ["wiperwraith", "Wiper Wraith"],
-                ["paintleech", "Paint Leech"], ["lampmite", "Lamp Mite"], ["rivetrook", "Rivet Rook"], ["chromeeel", "Chrome Eel"], ["bumpertoad", "Bumper Toad"], ["mirrorimp", "Mirror Imp"]] },
+            species: [["rainwight", "Rainwight"], ["saltgnawer", "Salt Gnawer"], ["puddlejack", "Puddlejack"], ["fogmoth", "Fogmoth"], ["hingehound", "Hinge Hound"], ["wiperwraith", "Wiper Wraith"], ["paintleech", "Paint Leech"], ["lampmite", "Lamp Mite"], ["rivetrook", "Rivet Rook"], ["chromeeel", "Chrome Eel"], ["bumpertoad", "Bumper Toad"], ["mirrorimp", "Mirror Imp"], ["kelpcoil", "Kelp Coil"], ["barnaclebat", "Barnacle Bat"], ["brinewisp", "Brine Wisp"], ["tidecrab", "Tide Crab"], ["drainrat", "Drain Rat"], ["foamjelly", "Foam Jelly"], ["anchorgrub", "Anchor Grub"], ["mudskipper", "Mudskipper"], ["netwraith", "Net Wraith"], ["silthound", "Silt Hound"], ["gullghost", "Gull Ghost"], ["rustclam", "Rust Clam"]] },
         { name: "The Rust Orchard", boss: ["thornregent", "The Thorn Regent"], lore: "Inland, trees grow out of old chassis. Their leaves are flakes of rust, and they rattle when nothing moves.",
-            species: [["burrthorn", "Burr Thorn"], ["oxidrake", "Oxidrake"], ["rustwren", "Rust Wren"], ["flakefox", "Flake Fox"], ["corrodile", "Corrodile"], ["boltworm", "Bolt Worm"],
-                ["scabbeetle", "Scab Beetle"], ["tarnishhare", "Tarnish Hare"], ["ironmoth", "Iron Moth"], ["pitlark", "Pit Lark"], ["sapwraith", "Sap Wraith"], ["husklurk", "Husk Lurker"]] },
+            species: [["burrthorn", "Burr Thorn"], ["oxidrake", "Oxidrake"], ["rustwren", "Rust Wren"], ["flakefox", "Flake Fox"], ["corrodile", "Corrodile"], ["boltworm", "Bolt Worm"], ["scabbeetle", "Scab Beetle"], ["tarnishhare", "Tarnish Hare"], ["ironmoth", "Iron Moth"], ["pitlark", "Pit Lark"], ["sapwraith", "Sap Wraith"], ["husklurk", "Husk Lurker"], ["thornsprite", "Thorn Sprite"], ["acornbolt", "Acorn Bolt"], ["vinehound", "Vine Hound"], ["leafrot", "Leaf Rot"], ["rootgnarl", "Root Gnarl"], ["mouldmoth", "Mould Moth"], ["peelbark", "Peel Bark"], ["cinderowl", "Cinder Owl"], ["canworm", "Can Worm"], ["spokespider", "Spoke Spider"], ["grafthog", "Graft Hog"], ["blightbat", "Blight Bat"]] },
         { name: "The Glass Market", boss: ["mirrorqueen", "The Mirror Queen"], lore: "A night market of windscreens and mirrors. Every stall shows you a little more than you asked to see.",
-            species: [["shardling", "Shardling"], ["prismcat", "Prism Cat"], ["glarehawk", "Glare Hawk"], ["crazeling", "Crazeling"], ["lenslug", "Lens Slug"], ["splintermouse", "Splinter Mouse"],
-                ["glintfish", "Glint Fish"], ["frostpane", "Frost Pane"], ["chipjay", "Chip Jay"], ["webcrack", "Web Crack"], ["bevelbat", "Bevel Bat"], ["hazeowl", "Haze Owl"]] },
+            species: [["shardling", "Shardling"], ["prismcat", "Prism Cat"], ["glarehawk", "Glare Hawk"], ["crazeling", "Crazeling"], ["lenslug", "Lens Slug"], ["splintermouse", "Splinter Mouse"], ["glintfish", "Glint Fish"], ["frostpane", "Frost Pane"], ["chipjay", "Chip Jay"], ["webcrack", "Web Crack"], ["bevelbat", "Bevel Bat"], ["hazeowl", "Haze Owl"], ["shimmerkoi", "Shimmer Koi"], ["bubblewisp", "Bubble Wisp"], ["tintmole", "Tint Mole"], ["streakhare", "Streak Hare"], ["reflectsprite", "Reflect Sprite"], ["lampfish", "Lamp Fish"], ["etchling", "Etchling"], ["gritsprite", "Grit Sprite"], ["fogfinch", "Fog Finch"], ["panespider", "Pane Spider"], ["glasstoad", "Glass Toad"], ["crystalcrab", "Crystal Crab"]] },
         { name: "The Moonless Depot", boss: ["moonless", "The Moonless King"], lore: "At the end of the road the moon goes out. Only your lantern is left, and the depot where every Defect was born.",
-            species: [["dimwisp", "Dim Wisp"], ["gloomhound", "Gloom Hound"], ["nullmoth", "Null Moth"], ["hushcrow", "Hush Crow"], ["voidtoad", "Void Toad"], ["shadeling", "Shadeling"],
-                ["blankface", "Blank Face"], ["duskeel", "Dusk Eel"], ["murkmole", "Murk Mole"], ["sootimp", "Soot Imp"], ["lullspider", "Lull Spider"], ["nightjar", "Nightjar"]] }
+            species: [["dimwisp", "Dim Wisp"], ["gloomhound", "Gloom Hound"], ["nullmoth", "Null Moth"], ["hushcrow", "Hush Crow"], ["voidtoad", "Void Toad"], ["shadeling", "Shadeling"], ["blankface", "Blank Face"], ["duskeel", "Dusk Eel"], ["murkmole", "Murk Mole"], ["sootimp", "Soot Imp"], ["lullspider", "Lull Spider"], ["nightjar", "Nightjar"], ["oilshade", "Oil Shade"], ["silencer", "Silencer"], ["eclipsecat", "Eclipse Cat"], ["hollowpup", "Hollow Pup"], ["dreadmite", "Dread Mite"], ["wanewisp", "Wane Wisp"], ["veilbat", "Veil Bat"], ["inkling", "Inkling"], ["latchwraith", "Latch Wraith"], ["coldfox", "Cold Fox"], ["deeprook", "Deep Rook"], ["shroudmoth", "Shroud Moth"]] }
     ];
-    function speciesOf(gid, type, act) {
+    function speciesOf(gid, type, act, avoid) {
         const R = REGIONS[(act || 1) - 1] || REGIONS[0];
         if (type === "boss") return { id: R.boss[0], name: R.boss[1] };
-        const [id, name] = R.species[hash(`${gid}|species`) % R.species.length];
-        return { id, name: type === "elite" ? `Elder ${name}` : name };
+        const start = hash(`${gid}|species`);
+        let pick = R.species[start % R.species.length];
+        if (avoid) {
+            outer: for (const reg of [R, ...REGIONS.filter(x => x !== R)]) {
+                for (let i = 0; i < reg.species.length; i++) {
+                    const c = reg.species[(start + i) % reg.species.length];
+                    if (!avoid.has(c[0])) { pick = c; break outer; }
+                }
+            }
+        }
+        return { id: pick[0], name: type === "elite" ? `Elder ${pick[1]}` : pick[1] };
     }
+    // Monday-start week, so "this week" matches a working week.
+    const weekKey = d => { const m = new Date(d); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return dayKey(m); };
     function newRun(packId, seed, hero) {
         const cls = CLASSES[hero] ? hero : "seer";
         const deck = CLASSES[cls].deck.map(id => inst(id));
@@ -220,7 +518,7 @@
         run.deck = run.deck.filter(c => c.uid !== uid);
         for (const pile of ["draw", "discard", "hand"]) run[pile] = run[pile].filter(u => u !== uid);
     }
-    const rewardChoices = (r, level, n) => shuffle(r, Object.keys(CARDS).filter(id => CARDS[id].unlock <= level)).slice(0, n);
+    const rewardChoices = (r, level, n, hero) => shuffle(r, Object.keys(CARDS).filter(id => CARDS[id].unlock <= level && (!hero || !CARDS[id].hero || CARDS[id].hero === hero))).slice(0, n);
     // After every second foe: a stop on the road, in this order.
     const eventAfter = defeats => (defeats > 0 && defeats % 2 === 0 ? ["camp", "mystery", "shop", "mystery", "cache"][((defeats / 2) - 1) % 5] : null);
     // Paths you may take next: groups still to finish, in route order; the boss only when it is all that is left.
@@ -299,7 +597,7 @@
         kindling: "Every spark feeds the next.", purge: "Less to carry, more to see.", afterglow: "The light lingers on the careful.",
         chain: "One look leads to the next.", forge: "Hammer the plain into the rare.", overflow: "A full lantern still spills light."
     };
-    const rules = { REGIONS, BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    const rules = { weekKey, REGIONS, BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -351,7 +649,23 @@
     const groupById = gid => { const c = ctx && ctx.cards.find(x => String(x.group.groupId) === String(gid)); return c ? c.group : null; };
 
     const actOf = gid => (nodes().find(n => n.groupId === String(gid)) || {}).act || 1;
-    const speciesAt = (gid, type) => speciesOf(gid, type, actOf(gid));
+    const thisWeek = () => {
+        if (!meta.week || meta.week.k !== weekKey(new Date())) meta.week = { k: weekKey(new Date()), ids: [] };
+        return meta.week;
+    };
+    const nameOfSpecies = id => { for (const R of REGIONS) { const f = R.species.find(x => x[0] === id); if (f) return f[1]; } return id; };
+    function speciesAt(gid, type) {
+        const t = type || nodeType(gid);
+        if (t === "boss" || !run) return speciesOf(gid, t, actOf(gid));
+        run.species = run.species || {};
+        let id = run.species[gid];
+        if (!id) {
+            id = speciesOf(gid, t, actOf(gid), new Set([...thisWeek().ids, ...Object.values(run.species)])).id;
+            run.species[gid] = id;
+        }
+        const name = nameOfSpecies(id);
+        return { id, name: t === "elite" ? `Elder ${name}` : name };
+    }
     const foeName = gid => speciesAt(gid, nodeType(gid)).name;
     const capOf = () => lightCap(run.relics) + (run.omen === "wick" ? 3 : 0);
     function costNow(c) {
@@ -382,12 +696,24 @@
         const i = h("img", cls);
         i.alt = alt || "";
         i.decoding = "async";
+        i.loading = "lazy";
         i.onerror = () => { i.remove(); };
         i.src = `${ART}${path}.webp`;
         return i;
     }
+    const FAMILY_ART = { seer: "gaze", scribe: "notes", warden: "dawn", wayfarer: "wind", moonsmith: "whet", huntress: "bounty" };
+    function cardArt(id) {
+        const fb = FAMILY_ART[(CARDS[id] || {}).hero] || "insight";
+        if (!listed(`cards/${id}`)) return art(`cards/${fb}`, "", "");
+        const i = art(`cards/${id}`, "", "");
+        i.onerror = () => { if (i.dataset.fb || fb === id) { i.remove(); return; } i.dataset.fb = "1"; i.src = `${ART}cards/${fb}.webp`; };
+        return i;
+    }
     // The animated idle loop (dir/anim/id) if there is one, otherwise the still painting.
+    // Once the manifest is in, files it does not list are never requested.
+    const listed = path => !assetList.length || assetList.includes(`${path}.webp`);
     function liveArt(dir, id, cls, alt) {
+        if (!listed(`${dir}/anim/${id}`)) return art(`${dir}/${id}`, cls, alt);
         const i = art(`${dir}/anim/${id}`, cls, alt);
         i.onerror = () => { i.onerror = () => i.remove(); i.src = `${ART}${dir}/${id}.webp`; };
         return i;
@@ -508,6 +834,9 @@
         class_seer: ["見ることが、あなたの力。何も見逃さない人。", "Seeing is your power. The one who misses nothing."],
         class_scribe: ["書くことが、あなたの力。一字も間違えない人。", "Writing is your power. The one who never gets a single letter wrong."],
         class_warden: ["守ることが、あなたの力。最後まで倒れない人。", "Guarding is your power. The one who stands till the very end."],
+        class_wayfarer: ["歩くことが、あなたの力。どんな道も、あなたの道。", "Walking is your power. Every road is your road."],
+        class_moonsmith: ["鍛えることが、あなたの力。弱いものを、強くする人。", "Forging is your power. The one who makes the weak strong."],
+        class_huntress: ["狩ることが、あなたの力。強い相手ほど、燃える人。", "Hunting is your power. The stronger the foe, the brighter you burn."],
         foe_1: ["あれ、何か出てきた。", "Huh, something's crawled out."],
         foe_2: ["ほら、また一匹いるよ。", "Look, there's another one."],
         foe_3: ["月明かりに、影がひとつ。", "One shadow in the moonlight."],
@@ -835,7 +1164,7 @@
             b.dataset.uid = uid;
             b.setAttribute("aria-label", `${def.name}${c.up ? " plus" : ""}: ${def.text}, ${gainText(c.id, cardGain(c.id, c.up, run.relics))}`);
             const pic = h("span", "g-card-art");
-            pic.append(h("span", "g-initial", def.name[0]), art(`cards/${c.id}`, "", ""));
+            pic.append(h("span", "g-initial", def.name[0]), cardArt(c.id));
             b.append(pic, h("span", "g-card-name", def.name));
             if (c.up) b.appendChild(h("span", "g-plus", "+"));
             const cost = def.on === "play" ? costNow(c) : null;
@@ -999,7 +1328,7 @@
         if (!meta.seenCards[id]) { meta.seenCards[id] = 1; saveMeta(); }
         b.type = "button";
         const pic = h("span", "g-big-art");
-        pic.append(h("span", "g-initial", def.name[0]), art(`cards/${id}`, "", ""));
+        pic.append(h("span", "g-initial", def.name[0]), cardArt(id));
         b.classList.add(`g-${rarity(def)}`);
         b.append(pic, h("span", "g-big-name", `${def.name}${up ? "+" : ""}`), h("span", "g-big-text", def.text),
             h("span", "g-big-gain", gainText(id, cardGain(id, up, run ? run.relics : []))));
@@ -1091,7 +1420,7 @@
     }
     function rewardOverlay(gid) {
         const body = h("div", "g-body");
-        const choices = rewardChoices(Math.random, level(), nodeType(gid) === "elite" && run.relics.includes("map") ? 4 : 3);
+        const choices = rewardChoices(Math.random, level(), nodeType(gid) === "elite" && run.relics.includes("map") ? 4 : 3, run.hero);
         const row = h("div", "g-big-row");
         for (const id of choices) {
             const b = bigCard(id, false);
@@ -1124,7 +1453,7 @@
         const row = h("div", "g-big-row");
         for (const c of plain) {
             const b = bigCard(c.id, true, "Sharpen");
-            b.addEventListener("click", () => { c.up = true; saveRun(); sfx("upgrade"); nextOverlay(); });
+            b.addEventListener("click", () => { c.up = true; upgraded(); saveRun(); nextOverlay(); });
             row.appendChild(b);
         }
         body.append(h("p", "g-lore", plain.length ? "Sharpen one card (+50%), or sit by the fire for a while." : "All your cards are sharp. Sit by the fire for a while."), row);
@@ -1135,7 +1464,7 @@
     function shopOverlay() {
         const off = run.relics.includes("scale") ? 0.75 : 1;
         const prices = { card: Math.round(12 * off), relic: Math.round(35 * off), remove: Math.round(15 * off) };
-        const stock = { cards: rewardChoices(Math.random, level(), 3), relic: shuffle(Math.random, Object.keys(RELICS).filter(id => !run.relics.includes(id)))[0] || null, removed: false };
+        const stock = { cards: rewardChoices(Math.random, level(), 3, run.hero), relic: shuffle(Math.random, Object.keys(RELICS).filter(id => !run.relics.includes(id)))[0] || null, removed: false };
         const draw = () => {
             const body = h("div", "g-body");
             body.appendChild(h("p", "g-lore", `You carry ${run.scrap} moonshards.`));
@@ -1161,7 +1490,7 @@
                     const b = h("button", "g-chip-btn", `${CARDS[c.id].name}${c.up ? "+" : ""}`);
                     b.type = "button";
                     b.disabled = run.scrap < prices.remove;
-                    b.addEventListener("click", () => { run.scrap -= prices.remove; removeCard(run, c.uid); stock.removed = true; saveRun(); sfx("burn"); say(line("burn_1")); draw(); });
+                    b.addEventListener("click", () => { run.scrap -= prices.remove; removeCard(run, c.uid); burned(); stock.removed = true; saveRun(); sfx("burn"); say(line("burn_1")); draw(); });
                     rm.appendChild(b);
                 }
                 body.appendChild(rm);
@@ -1178,7 +1507,7 @@
         { id: "lantern", title: "A lost lantern", lore: "A lantern sits on a car roof, still burning. Someone will come back for it. Probably.",
             options: [{ label: "Take it (+3 Light)", go: () => earnLight(3) }, { label: "Leave it for its owner (+20 XP)", go: () => grant(20, homeBtn) }] },
         { id: "well", title: "The moon well", lore: "Water in an old wheel rim holds the whole moon. It tastes of iron and silver.",
-            options: [{ label: "Drink (upgrade 2 random cards, lose 10 shards)", need: 10, go: () => { run.scrap -= 10; shuffle(Math.random, run.deck.filter(c => !c.up)).slice(0, 2).forEach(c => { c.up = true; }); } },
+            options: [{ label: "Drink (upgrade 2 random cards, lose 10 shards)", need: 10, go: () => { run.scrap -= 10; shuffle(Math.random, run.deck.filter(c => !c.up)).slice(0, 2).forEach(c => { c.up = true; upgraded(); }); } },
                 { label: "Fill a flask (+2 Light)", go: () => earnLight(2) }] },
         { id: "tinker", title: "A tinker's offer", lore: "A tinker in a long coat taps your deck. That one is dull, they say. I have better.",
             options: [{ label: "Trade a common card for a rarer one", go: () => {
@@ -1192,7 +1521,7 @@
                 { label: "Walk on (+15 XP)", go: () => grant(15, homeBtn) }] },
         { id: "star", title: "A fallen star", lore: "Something small and bright smoulders in a puddle between two cars.",
             options: [{ label: "Pocket it (+12 shards)", go: () => { run.scrap += 12; } },
-                { label: "Make a wish (a new card, already sharpened)", go: () => addCard(run, pick(Math.random, rewardChoices(Math.random, level(), 6)), true) }] }
+                { label: "Make a wish (a new card, already sharpened)", go: () => addCard(run, pick(Math.random, rewardChoices(Math.random, level(), 6, run.hero)), true) }] }
     ];
     function mysteryOverlay() {
         run.seenMyst = run.seenMyst || [];
@@ -1214,7 +1543,7 @@
         panel({ kicker: "On the road", title: m.title, body, actions: [] });
         sfx("page");
     }
-    function eventOverlay(type) { (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : type === "mystery" ? mysteryOverlay : cacheOverlay)(); }
+    function eventOverlay(type) { run.eventsSeen = (run.eventsSeen || 0) + 1; moment("event"); (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : type === "mystery" ? mysteryOverlay : cacheOverlay)(); }
     function summaryOverlay() {
         const L = levelOf(meta.xp);
         const foes = Object.keys(run.defeated).length;
@@ -1290,7 +1619,7 @@
             for (const c of cards) {
                 const t = h("div", `g-mini g-${rarity(CARDS[c.id])}`);
                 const pic = h("span", "g-card-art");
-                pic.append(h("span", "g-initial", CARDS[c.id].name[0]), art(`cards/${c.id}`, "", ""));
+                pic.append(h("span", "g-initial", CARDS[c.id].name[0]), cardArt(c.id));
                 t.append(pic, h("b", "", `${CARDS[c.id].name}${c.up ? "+" : ""}`), h("small", "", CARDS[c.id].text));
                 row.appendChild(t);
             }
@@ -1307,16 +1636,34 @@
         const body = h("div", "g-body");
         const ids = Object.keys(CARDS), seen = ids.filter(id => meta.seenCards[id] || CARDS[id].unlock <= level());
         body.appendChild(h("p", "g-lore", `${seen.length} of ${ids.length} cards known · ${Object.keys(RELICS).length} relics`));
+        // One family at a time: your hero first, then any other, or the cards every hero shares.
+        const fams = [...Object.keys(CLASSES), "shared"];
+        let cur = CLASSES[meta.lastHero] ? meta.lastHero : "seer";
+        const tabs = h("div", "g-chip-row g-fam-tabs");
+        tabs.setAttribute("role", "tablist");
         const grid = h("div", "g-pile");
-        for (const id of ids) {
+        const fill = () => {
+            tabs.querySelectorAll("button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.fam === cur)));
+            grid.replaceChildren(...ids.filter(id => (CARDS[id].hero || "shared") === cur).sort((a, b) => CARDS[a].unlock - CARDS[b].unlock).map(tile));
+        };
+        for (const f of fams) {
+            const n = ids.filter(id => (CARDS[id].hero || "shared") === f);
+            const b = h("button", "g-chip-btn", `${f === "shared" ? "Shared" : CLASSES[f].name} ${n.filter(id => seen.includes(id)).length}/${n.length}`);
+            b.type = "button"; b.dataset.fam = f; b.setAttribute("role", "tab");
+            b.addEventListener("click", () => { sfx("ui"); cur = f; fill(); });
+            tabs.appendChild(b);
+        }
+        body.appendChild(tabs);
+        function tile(id) {
             const known = seen.includes(id), def = CARDS[id];
             const t = h("div", `g-mini g-${rarity(def)}${known ? "" : " locked"}`);
             const pic = h("span", "g-card-art");
-            if (known) pic.append(h("span", "g-initial", def.name[0]), art(`cards/${id}`, "", ""));
+            if (known) pic.append(h("span", "g-initial", def.name[0]), cardArt(id));
             t.append(pic, h("b", "", known ? def.name : "???"), h("small", "", known ? def.text : `Unlocks at Lv ${def.unlock}`));
             if (known) t.appendChild(h("em", "", FLAVOR[id] || ""));
-            grid.appendChild(t);
+            return t;
         }
+        fill();
         body.appendChild(grid);
         body.appendChild(h("h3", "g-h3", "Relics"));
         const rel = h("div", "g-pile");
@@ -1342,16 +1689,12 @@
         for (const [k, v] of [["Tales told", meta.runs], ["Foes vanquished", meta.foes], ["Verdicts", meta.verdicts], ["Total XP", meta.xp]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
         body.appendChild(dl);
         body.appendChild(h("h3", "g-h3", "Card collection"));
-        const grid = h("div", "g-collection");
-        for (const id of Object.keys(CARDS)) {
-            const def = CARDS[id], open = def.unlock <= L.level;
-            grid.appendChild(h("div", `g-coll${open ? "" : " locked"}`, open ? def.name : `Unlocks at Lv ${def.unlock}`));
-        }
-        body.appendChild(grid);
+        const all = Object.values(CARDS), open = all.filter(d => d.unlock <= L.level).length, next = all.filter(d => d.unlock === L.level + 1).length;
+        body.appendChild(h("p", "g-lore", `${open} of ${all.length} cards unlocked${next ? ` · ${next} more at Lv ${L.level + 1}` : ""}. Open the Compendium to browse them.`));
         // Bestiary: every kind of Defect you have vanquished.
         body.appendChild(h("h3", "g-h3", "Bestiary"));
         const best = h("div", "g-bestiary");
-        for (const [id, name] of [...SPECIES, ["sovereign", "The Pale Sovereign"]]) {
+        for (const [id, name] of REGIONS.flatMap(R => [...R.species, R.boss])) {
             const n = (meta.bestiary || {})[id] || 0;
             const tile = h("div", `g-beast${n ? "" : " unseen"}`);
             const pic = h("span", "g-beast-art");
@@ -1539,8 +1882,23 @@
         renderMe();
         renderHand();
     }
+    function ctxT(extra) {
+        const g = run.foe, type = g ? nodeType(g) : "foe";
+        return Object.assign({
+            seen: item ? item.seen.size : 0, total: item ? item.total : 0, zoom: Boolean(item && item.lit.has("viewer")),
+            details: Boolean(item && item.lit.has("details")), ai: Boolean(item && item.lit.has("ai")), checks: item ? item.checks : 0,
+            elite: type === "elite" || type === "boss", boss: type === "boss", wager: Boolean(run.wager && run.wager.gid === g && !run.wager.broken),
+            scrap: run.scrap, light: run.light, played: run.played, photoFired: run.photoFired || 0, firstOfFoe: run.first, last: false, wasLater: false,
+            ups: run.deck.filter(c => c.up).length, deck: run.deck.length, act: g ? actOf(g) : 1, defeats: run.defeats || 0,
+            burned: run.burned || 0, events: run.eventsSeen || 0, paths: run.paths || 0
+        }, extra || {});
+    }
+    // Moments outside the item: these fire from hand like a verdict does.
+    function moment(kind) { const x = trigger(kind, ctxT()); if (x) grant(x, portraitEl); }
+    const ITEM_KINDS = new Set(["viewer", "details", "check", "ai"]);
     // Fires matching cards in hand. Item-based kinds fire once per item, and never on an item already scored.
     function trigger(kind, t) {
+        t = t || ctxT();
         let xp = 0;
         const tr = run.foe ? traitHere(run.foe) : null;
         for (const uid of run.hand.slice()) {
@@ -1548,7 +1906,7 @@
             if (!c) continue;
             const def = CARDS[c.id];
             if (def.on !== kind || (def.test && !def.test(t))) continue;
-            if (kind !== "verdict" && kind !== "defeat" && kind !== "active") {
+            if (ITEM_KINDS.has(kind)) {
                 if (!item || run.scored[item.key] || item.fired.has(kind)) continue;
                 item.fired.add(kind);
             }
@@ -1584,47 +1942,67 @@
         if (run.omen === "kind") run.kindUsed = run.foe;
         if (stat("actives") >= 20) award("sharp");
         const more = c.up ? 1.5 : 1;
-        switch (c.id) {
-        case "flare": run.double = run.foe; floatAt(portraitEl, "Loot ×2", "g-f-xp"); break;
-        case "wind": for (let i = 0; i < 2; i++) { const u = drawOne(run, Math.random); if (u) justDrawn.add(u); } break;
-        case "whet": {
-            const plain = shuffle(Math.random, run.deck.filter(x => !x.up && x.uid !== uid));
-            if (plain[0]) { plain[0].up = true; floatAt(portraitEl, `${CARDS[plain[0].id].name}+`, "g-f-xp"); }
-            break;
-        }
-        case "tithe": run.scrap += Math.round(8 * more); sfx("coin"); floatAt($("gScrap"), `+${Math.round(8 * more)} shards`, "g-f-xp"); break;
-        case "insight": run.nextCrit = true; floatAt(portraitEl, "Next card crits", "g-f-xp"); break;
-        case "surge": grant(Math.round(40 * more), portraitEl); break;
-        case "echo": if (run.lastFired) {
-            const g = cardGain(run.lastFired.id, run.lastFired.up, run.relics);
-            if (g.xp) grant(g.xp, portraitEl);
-            if (g.scrap) run.scrap += g.scrap;
-            if (g.light) earnLight(g.light);
-        } break;
-        case "bind": run.bound = run.foe; floatAt(portraitEl, "Trait broken", "g-f-xp"); break;
-        case "forge": {
-            const other = shuffle(Math.random, run.hand.filter(u => u !== uid).map(cardOf).filter(x => x && CARDS[x.id].unlock <= 1));
-            const rare = Object.keys(CARDS).filter(id => CARDS[id].unlock >= 2 && CARDS[id].unlock <= Math.max(2, level()) && id !== "forge");
-            if (other[0] && rare.length) { other[0].id = pick(Math.random, rare); floatAt(portraitEl, `→ ${CARDS[other[0].id].name}`, "g-f-xp"); }
-            break;
-        }
-        case "purge": {
-            const other = run.hand.filter(u => u !== uid);
-            if (other.length) { const victim = cardOf(other[other.length - 1]); removeCard(run, victim.uid); run.scrap += 10; floatAt($("gScrap"), `Burned ${CARDS[victim.id].name} · +10`, "g-f-xp"); sfx("burn"); }
-            break;
-        }
-        default: break;
-        }
+        runFx(CARDS[c.id].fx || {}, more, uid);
         if (run.relics.includes("kiln") && (CARDS[c.id].cost || 0) >= 3) grant(10, portraitEl);
         flyCard(uid, false);
         run.hand = run.hand.filter(u => u !== uid);
         run.discard.push(uid);
         run.played++;
-        const kx = trigger("active", {});
+        const kx = trigger("active", ctxT());
         if (kx) grant(kx, portraitEl);
         refillHand(run, Math.random).forEach(u => justDrawn.add(u));
         saveRun();
         renderHud();
+    }
+    const upgradeRandom = (n, not) => {
+        const plain = shuffle(Math.random, run.deck.filter(x => !x.up && x.uid !== not)).slice(0, n);
+        plain.forEach(x => { x.up = true; floatAt(portraitEl, `${CARDS[x.id].name}+`, "g-f-xp"); upgraded(); });
+    };
+    function upgraded() { sfx("upgrade"); moment("upgrade"); }
+    function burned() { run.burned = (run.burned || 0) + 1; moment("burn"); }
+    function runFx(fx, more, uid) {
+        const n = v => Math.round(v * more);
+        if (fx.xp) grant(n(fx.xp), portraitEl);
+        if (fx.scrap) { run.scrap += n(fx.scrap); sfx("coin"); floatAt($("gScrap"), `+${n(fx.scrap)} shards`, "g-f-xp"); }
+        if (fx.light) earnLight(n(fx.light));
+        for (let i = 0; i < (fx.draw || 0); i++) { const u = drawOne(run, Math.random); if (u) justDrawn.add(u); }
+        if (fx.crit) { run.nextCrit = true; floatAt(portraitEl, "Next card crits", "g-f-xp"); }
+        if (fx.double) { run.double = run.foe; floatAt(portraitEl, "Loot ×2", "g-f-xp"); }
+        if (fx.prey) { run.prey = run.foe; floatAt(portraitEl, "Marked", "g-f-xp"); }
+        if (fx.bind) { run.bound = run.foe; floatAt(portraitEl, "Trait broken", "g-f-xp"); }
+        if (fx.upgrade) upgradeRandom(n(fx.upgrade), uid);
+        if (fx.per) {
+            const [key, k] = fx.per;
+            const base = { seen: item ? item.seen.size : 0, checks: item ? item.checks : 0, ups: run.deck.filter(x => x.up).length, scrap: Math.floor(run.scrap / 10),
+                defeats: run.defeats || 0, burned: run.burned || 0, events: run.eventsSeen || 0, paths: run.paths || 0, played: run.played,
+                photoFired: run.photoFired || 0, light: run.light }[key] || 0;
+            if (base) grant(n(base * k), portraitEl);
+        }
+        if (fx.echo && run.lastFired) {
+            const g = cardGain(run.lastFired.id, run.lastFired.up, run.relics);
+            for (let i = 0; i < fx.echo; i++) { if (g.xp) grant(g.xp, portraitEl); if (g.scrap) run.scrap += g.scrap; if (g.light) earnLight(g.light); }
+        }
+        if (fx.forge) {
+            const other = shuffle(Math.random, run.hand.filter(u => u !== uid).map(cardOf).filter(x => x && CARDS[x.id].unlock <= 1));
+            const rare = Object.keys(CARDS).filter(id => CARDS[id].unlock >= 2 && CARDS[id].unlock <= Math.max(2, level()) && CARDS[id].on !== "play" && (!CARDS[id].hero || CARDS[id].hero === run.hero));
+            if (other[0] && rare.length) { other[0].id = pick(Math.random, rare); floatAt(portraitEl, `→ ${CARDS[other[0].id].name}`, "g-f-xp"); }
+        }
+        if (fx.burn) {
+            const other = run.hand.filter(u => u !== uid);
+            if (other.length) {
+                const victim = cardOf(other[other.length - 1]);
+                removeCard(run, victim.uid);
+                if (fx.burn.scrap) run.scrap += n(fx.burn.scrap);
+                if (fx.burn.light) earnLight(n(fx.burn.light));
+                if (fx.burn.xp) grant(n(fx.burn.xp), portraitEl);
+                floatAt($("gScrap"), `Burned ${CARDS[victim.id].name}`, "g-f-xp"); sfx("burn");
+                burned();
+            }
+        }
+        if (fx.wager && !(run.wager && run.wager.gid === run.foe)) {
+            run.wager = { gid: run.foe, stake: n(fx.wager), broken: false };
+            floatAt($("gWager"), `Staked ${n(fx.wager)}`, "g-f-xp"); moment("wager");
+        }
     }
     function flyCard(uid, crit) {
         sfx(crit ? "crit" : "card");
@@ -1647,7 +2025,7 @@
     function hurtAnim() {
         const img = portraitEl.querySelector(".g-foe-img");
         const gid = portraitEl.dataset.gid;
-        if (!img || !gid || portraitEl.querySelector(".g-hurt-img")) return;
+        if (!img || !gid || portraitEl.querySelector(".g-hurt-img") || !listed(`foes/hurt/${speciesAt(gid, nodeType(gid)).id}`)) return;
         // A fresh element always starts the clip from its first frame.
         const hurt = h("img", "g-foe-img g-hurt-img");
         hurt.alt = img.alt;
@@ -1785,23 +2163,25 @@
         const tr = traitHere(gid);
         const n = ctx.cards.filter(c => String(c.group.groupId) === gid).length;
         let xp = Math.round((20 + 5 * n) * (type === "boss" ? 2 : type === "elite" ? 1.5 : 1) * (tr === "armored" ? 1.5 : 1));
-        xp += trigger("defeat", { played: run.played });
+        xp += trigger("defeat", ctxT());
         let shards = 2 + (run.relics.includes("gear") ? 3 : 0) + (tr === "greedy" ? 6 : 0);
         if (run.omen === "silver") shards = Math.round(shards * 1.5);
         if (run.wager && run.wager.gid === gid) {
             if (!run.wager.broken) { const won = run.wager.stake * 2; shards += won; xp += 20; setTimeout(() => { floatAt($("gScrap"), `Wager won · +${won}`, "g-f-xp"); sfx("coin"); }, 500); }
             run.wager = null;
         }
+        if (run.prey === gid) { xp = Math.round(xp * 1.5); shards += 5; }
         if (run.double === gid) { xp *= 2; shards *= 2; }
         run.scrap += shards;
         meta.foes++;
         const sp = speciesAt(gid, type).id;
         meta.bestiary = meta.bestiary || {};
         meta.bestiary[sp] = (meta.bestiary[sp] || 0) + 1;
+        if (type !== "boss" && !thisWeek().ids.includes(sp)) meta.week.ids.push(sp);
         award("first");
         if (type === "elite" && stat("elites") >= 5) award("elites");
         if (type === "boss") award("boss");
-        if (Object.keys(meta.bestiary).length >= SPECIES.length + 1) award("naturalist");
+        if (Object.keys(meta.bestiary).length >= REGIONS.reduce((n, R) => n + R.species.length + 1, 0)) award("naturalist");
         holdUntil = performance.now() + (reduce ? 300 : 1000);
         setTimeout(() => grant(xp, portraitEl), 350);
         sfx("defeat");
@@ -1842,7 +2222,7 @@
             if (tr) txt.appendChild(h("em", "", `${TRAITS[tr].name}: ${TRAITS[tr].text}`));
             b.append(pic, txt);
             if (o.type === "elite") b.appendChild(h("span", "g-tag g-tag-elite", "Elite"));
-            b.addEventListener("click", () => { sfx("confirm"); haptic(HAPTIC.pick); prefer(o.groupId); nextOverlay(); });
+            b.addEventListener("click", () => { sfx("confirm"); haptic(HAPTIC.pick); run.paths = (run.paths || 0) + 1; moment("path"); prefer(o.groupId); nextOverlay(); });
             list.appendChild(b);
         }
         body.append(h("p", "g-lore", "The road forks under the moon. Which way?"), list,
@@ -1900,8 +2280,10 @@
             // Undo then redo earns nothing twice.
             run.scored[card.key] = 1;
             const mine = item && item.key === card.key ? item : null;
-            const t = { seen: mine ? mine.seen.size : 0, total: card.photos.length, firstOfFoe: run.first,
-                wasLater: Boolean(run.later[card.key]), played: run.played, details: Boolean(mine && mine.lit.has("details")), light: run.light, photoFired: run.photoFired || 0 };
+            const left = ctx.cards.filter(c => String(c.group.groupId) === String(card.group.groupId) && !V.isDecided(ctx.actions, ctx.decisions[c.key])).length;
+            const t = ctxT({ seen: mine ? mine.seen.size : 0, total: card.photos.length, firstOfFoe: run.first, wasLater: Boolean(run.later[card.key]),
+                details: Boolean(mine && mine.lit.has("details")), zoom: Boolean(mine && mine.lit.has("viewer")), ai: Boolean(mine && mine.lit.has("ai")),
+                checks: mine ? mine.checks : 0, last: left === 0 });
             if (t.wasLater) say(line("revisit_1"));
             run.first = false;
             // Looked closely = saw every photo (or there was only one), or zoomed, or read the details.
@@ -1942,7 +2324,7 @@
             if (kind === "check") { if (item.checks < 2) { item.checks++; earnLight(1); } }
             else if (!item.lit.has(kind)) { item.lit.add(kind); earnLight(1 + (kind === "viewer" && tr === "restless" ? 1 : 0)); }
         }
-        const xp = trigger(kind, {});
+        const xp = trigger(kind, ctxT());
         if (xp) grant(xp, portraitEl);
         renderHand(); renderMe(); saveRun();
     }
@@ -1974,6 +2356,7 @@
         const stake = Math.min(10, run.scrap);
         run.scrap -= stake;
         run.wager = { gid: run.foe, stake, broken: false };
+        moment("wager");
         sfx("purchase"); haptic(HAPTIC.pick);
         floatAt($("gWager"), `Staked ${stake}`, "g-f-xp");
         saveRun(); renderMe(); renderWager();

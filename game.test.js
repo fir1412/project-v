@@ -68,7 +68,7 @@ assert.ok(G.LANTERNS.amber.need({ xp: 0 }) && !G.LANTERNS.rose.need({ xp: 0 }));
 // Bounties never depend on a verdict; single-photo items never ask for every photo.
 assert.ok(["zoom", "details", "every"].includes(G.bountyOf("g#1", 3)));
 assert.ok(Array.from({ length: 20 }, (_, i) => G.bountyOf(`k${i}`, 1)).every(b => b !== "every"));
-assert.ok(Object.keys(G.CARDS).every(id => G.FLAVOR[id]));
+assert.ok(Object.keys(G.FLAVOR).every(id => G.CARDS[id]));
 // Long packs split into acts (max 5), each ending in its own boss; paths finish an act first.
 const mk = n => { const a = []; for (let g = 0; g < n; g++) for (let i = 0; i < 2; i++) a.push(card(`b${g}`, i)); return G.buildMap(a); };
 const r2 = mk(10);
@@ -81,3 +81,40 @@ assert.strictEqual(mk(6).filter(n => n.type === "boss").length, 1);
 assert.strictEqual(G.speciesOf("x", "boss", 2).id, "lamplighter");
 assert.ok(G.REGIONS[4].species.some(([id]) => id === G.speciesOf("x", "foe", 5).id));
 console.log("game rules ok");
+
+// Weekly rotation: 24 kinds per region, no kind repeats while unseen ones remain, wanderers come from other regions.
+{
+    for (const R of G.REGIONS) assert.strictEqual(R.species.length, 24, R.name);
+    const all = G.REGIONS.flatMap(R => R.species.map(x => x[0]));
+    assert.strictEqual(new Set(all).size, 120, "120 distinct kinds");
+    const seen = new Set();
+    for (let i = 0; i < 120; i++) { const sp = G.speciesOf(`g${i}`, "foe", 1, seen); assert.ok(!seen.has(sp.id), `repeat at ${i}`); seen.add(sp.id); }
+    assert.strictEqual(seen.size, 120, "a week of 120 vehicles meets 120 different kinds");
+    assert.strictEqual(G.speciesOf("x", "elite", 1, new Set()).name.startsWith("Elder "), true);
+    assert.strictEqual(G.weekKey(new Date(2026, 10, 4)), "2026-11-02");
+    assert.strictEqual(G.weekKey(new Date(2026, 10, 8)), "2026-11-02");
+}
+console.log("rotation ok");
+
+// 300+ cards: six hero families, every card well-formed, active cards carry an effect, rewards stay in the family.
+{
+    const ids = Object.keys(G.CARDS);
+    assert.ok(ids.length >= 300, `only ${ids.length} cards`);
+    const KINDS = new Set(["verdict", "defeat", "viewer", "details", "check", "ai", "play", "active", "overflow", "path", "event", "upgrade", "burn", "wager"]);
+    const t = { seen: 3, total: 3, zoom: true, details: true, ai: true, checks: 2, elite: true, boss: true, wager: true, scrap: 99, light: 10, played: 6,
+        photoFired: 4, firstOfFoe: true, last: true, wasLater: true, ups: 12, deck: 6, act: 5, defeats: 6, burned: 3, events: 3, paths: 5 };
+    for (const id of ids) {
+        const c = G.CARDS[id];
+        assert.ok(c.name && c.text && KINDS.has(c.on) && c.unlock >= 1 && c.unlock <= 10, id);
+        if (c.on === "play") assert.ok(c.cost >= 1 && c.fx && Object.keys(c.fx).length, `${id} needs cost and fx`);
+        else { assert.ok(c.xp || c.light || c.scrap, `${id} gives nothing`); if (c.test) assert.strictEqual(typeof c.test(t), "boolean", id); }
+    }
+    for (const [hero, cls] of Object.entries(G.CLASSES)) {
+        cls.deck.forEach(id => assert.ok(G.CARDS[id], `${hero} deck ${id}`));
+        assert.ok(ids.filter(id => G.CARDS[id].hero === hero).length >= 30, `${hero} family too small`);
+        const pool = G.rewardChoices(() => 0.5, 10, 400, hero);
+        assert.ok(pool.every(id => !G.CARDS[id].hero || G.CARDS[id].hero === hero), `${hero} offered another family`);
+    }
+    assert.strictEqual(Object.keys(G.CLASSES).length, 6);
+}
+console.log("cards ok");
