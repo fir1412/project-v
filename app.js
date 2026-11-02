@@ -1037,9 +1037,9 @@
 
     $("sendDecisions").addEventListener("click", async () => {
         const data = V.decisionsFile(S.pack, S.cards, S.decisions, undefined, S.moves);
-        const name = `vinder-decisions-${S.pack.packId}.json`;
-        const blob = new Blob([JSON.stringify(data, null, 1)], { type: "application/json" });
-        const file = new File([blob], name, { type: "application/json" });
+        const name = `vinder-decisions-${S.pack.packId}.txt`;
+        const blob = new Blob([JSON.stringify(data, null, 1)], { type: "text/plain" });
+        const file = new File([blob], name, { type: "text/plain" });
         try {
             let shared = false;
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1107,7 +1107,14 @@
     }
 
     if ("serviceWorker" in navigator && location.protocol === "https:") {
-        navigator.serviceWorker.register("sw.js").catch(() => { /* offline install not available */ });
+        const hadController = Boolean(navigator.serviceWorker.controller);
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (!hadController || reloaded) return;
+            reloaded = true;
+            location.reload();
+        });
+        navigator.serviceWorker.register("sw.js").then(reg => reg.update()).catch(() => { /* offline install not available */ });
     }
     show("home");
     takeSharedFile();
