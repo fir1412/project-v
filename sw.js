@@ -1,4 +1,4 @@
-const VERSION = "vinder-game-3";
+const VERSION = "vinder-game-4";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "vinder-core.js", "game.js", "game.css", "manifest.webmanifest",
     "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"];
 

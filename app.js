@@ -125,10 +125,40 @@
         pack.groups && pack.groups.some(g => Array.isArray(g.fields) || g.fieldsNote) ? "" : "checking the values"
     ].filter(Boolean);
 
+    // Landing card: greeting, date and what is left across every pack on this phone.
+    function renderSummary(packs, states) {
+        const box = $("homeSummary");
+        let left = 0, decided = 0, sent = 0;
+        for (const item of packs) {
+            const r = V.readPack(item.pack);
+            const st = states.get(item.packId) || { decisions: {} };
+            const p = V.progress(r.cards, st.decisions || {}, r.actions);
+            left += p.left; decided += p.decided;
+            if (st.sentAt) sent++;
+        }
+        const now = new Date(), hr = now.getHours();
+        const hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+        box.replaceChildren();
+        const art = el("div", "home-summary-art");
+        art.setAttribute("aria-hidden", "true");
+        art.append(el("i"), el("i"), el("i"));
+        const text = el("div", "home-summary-text");
+        text.append(el("p", "home-summary-hello", `${hello} · ${now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "short" })}`));
+        if (!packs.length) {
+            text.append(el("p", "home-summary-big", "Ready when you are"), el("p", "home-summary-sub", "Open a pack to start deciding."));
+        } else {
+            text.append(el("p", "home-summary-big", left ? `${left} card${left === 1 ? "" : "s"} to decide` : "All caught up"),
+                el("p", "home-summary-sub", [`${packs.length} pack${packs.length === 1 ? "" : "s"} on this phone`, decided ? `${decided} decided` : "", sent ? `${sent} sent` : ""].filter(Boolean).join(" · ")));
+        }
+        box.append(text, art);
+        box.hidden = false;
+    }
+
     async function renderHome() {
         const list = $("packs");
         const packs = (await getAll("packs")).sort((a, b) => (b.openedAt || 0) - (a.openedAt || 0));
         const states = new Map((await getAll("state")).map(s => [s.packId, s]));
+        renderSummary(packs, states);
         list.replaceChildren();
         if (!packs.length) {
             const empty = el("div", "empty");
