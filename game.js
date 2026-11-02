@@ -1114,7 +1114,8 @@
         if (m === "camp") return "audio/music/camp.webm";
         const act = run && run.foe && ctx ? actOf(run.foe) : 1;
         const region = REGION_KEYS[act - 1] || "road";
-        const pool = assetList.filter(f => f.startsWith(`audio/music2/${m}-${region}-`));
+        // Act 1 (most packs) draws from every region's pool so a long day rarely repeats; later acts keep their own colour.
+        const pool = assetList.filter(f => f.startsWith(act === 1 ? `audio/music2/${m}-` : `audio/music2/${m}-${region}-`));
         const all = [...(act === 1 || !pool.length ? [`audio/music/${m}.webm`] : []), ...pool];
         meta.heard = meta.heard || {};
         const key = `${m}-${region}`;
