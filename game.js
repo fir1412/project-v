@@ -30,30 +30,40 @@
 
     // on: when the card can fire. verdict/defeat fire on those moments; viewer/details/check/ai fire once per item.
     const CARDS = {
-        gaze: { name: "Steady Gaze", icon: "👁️", on: "verdict", test: t => t.seen >= 2, xp: 12, text: "Verdict after seeing 2+ photos", unlock: 1 },
-        dawn: { name: "First Light", icon: "🌅", on: "verdict", test: t => t.firstOfFoe, xp: 10, mom: 1, text: "Your first verdict on a foe", unlock: 1 },
-        ledger: { name: "Ledger Spark", icon: "🪶", on: "check", xp: 15, text: "Confirm or correct a value", unlock: 1 },
-        closer: { name: "Last Word", icon: "🗝️", on: "defeat", xp: 20, scrap: 3, text: "Vanquish a foe", unlock: 1 },
-        panorama: { name: "Panorama", icon: "🌄", on: "verdict", test: t => t.total > 1 && t.seen >= t.total, xp: 25, text: "Verdict after seeing every photo", unlock: 1 },
-        loupe: { name: "Loupe", icon: "🔍", on: "viewer", xp: 10, mom: 1, text: "Open a photo full screen", unlock: 1 },
-        notes: { name: "Field Notes", icon: "📜", on: "details", xp: 10, text: "Read the details", unlock: 1 },
-        bounty: { name: "Bounty", icon: "💰", on: "defeat", scrap: 8, text: "Vanquish a foe", unlock: 2 },
-        revisit: { name: "Return Visit", icon: "🔁", on: "verdict", test: t => t.wasLater, xp: 25, text: "Decide one you set aside", unlock: 2 },
-        oracle: { name: "Second Sight", icon: "🔮", on: "ai", xp: 15, text: "Ask the AI about it", unlock: 3 },
-        surge: { name: "Moonsurge", icon: "⚡", on: "verdict", test: t => t.momentum >= 4, xp: 30, momReset: true, text: "Verdict with 4+ Momentum (spends it)", unlock: 4 },
-        deep: { name: "Deep Scan", icon: "🛰️", on: "verdict", test: t => t.seen >= 4, xp: 30, text: "Verdict after seeing 4+ photos", unlock: 5 },
-        rally: { name: "War Drum", icon: "🥁", on: "verdict", test: t => t.played >= 3, xp: 5, mom: 3, text: "Verdict after 3+ cards played on a foe", unlock: 6 }
+        gaze: { name: "Steady Gaze", on: "verdict", test: t => t.seen >= 2, xp: 12, text: "Verdict after seeing 2+ photos", unlock: 1 },
+        dawn: { name: "First Light", on: "verdict", test: t => t.firstOfFoe, xp: 10, mom: 1, text: "Your first verdict on a foe", unlock: 1 },
+        ledger: { name: "Ledger Spark", on: "check", xp: 15, text: "Confirm or correct a value", unlock: 1 },
+        closer: { name: "Last Word", on: "defeat", xp: 20, scrap: 3, text: "Vanquish a foe", unlock: 1 },
+        panorama: { name: "Panorama", on: "verdict", test: t => t.total > 1 && t.seen >= t.total, xp: 25, text: "Verdict after seeing every photo", unlock: 1 },
+        loupe: { name: "Loupe", on: "viewer", xp: 10, mom: 1, text: "Open a photo full screen", unlock: 1 },
+        notes: { name: "Field Notes", on: "details", xp: 10, text: "Read the details", unlock: 1 },
+        bounty: { name: "Bounty", on: "defeat", scrap: 8, text: "Vanquish a foe", unlock: 2 },
+        revisit: { name: "Return Visit", on: "verdict", test: t => t.wasLater, xp: 25, text: "Decide one you set aside", unlock: 2 },
+        oracle: { name: "Second Sight", on: "ai", xp: 15, text: "Ask the AI about it", unlock: 3 },
+        surge: { name: "Moonsurge", on: "verdict", test: t => t.momentum >= 4, xp: 30, momReset: true, text: "Verdict with 4+ Momentum (spends it)", unlock: 4 },
+        deep: { name: "Deep Scan", on: "verdict", test: t => t.seen >= 4, xp: 30, text: "Verdict after seeing 4+ photos", unlock: 5 },
+        rally: { name: "War Drum", on: "verdict", test: t => t.played >= 3, xp: 5, mom: 3, text: "Verdict after 3+ cards played on a foe", unlock: 6 }
     };
     const PHOTO_CARDS = new Set(["gaze", "panorama", "deep", "loupe"]);
     const INK_CARDS = new Set(["ledger", "notes"]);
-    const STARTER = ["gaze", "gaze", "dawn", "ledger", "closer"];
+    // Each class starts with a deck that rewards a different real habit.
+    const CLASSES = {
+        seer: { name: "Seer", text: "Rewards looking at every photo.", deck: ["gaze", "gaze", "panorama", "loupe", "closer"] },
+        scribe: { name: "Scribe", text: "Rewards checking values and reading the details.", deck: ["ledger", "ledger", "notes", "dawn", "closer"] },
+        warden: { name: "Warden", text: "Builds momentum and finishes foes.", deck: ["dawn", "dawn", "gaze", "closer", "rally"] }
+    };
+    const STARTER = CLASSES.seer.deck;
+    // Twelve kinds of Defect; each group gets one by its id, the last group is always the Sovereign.
+    const SPECIES = [["scratcher", "Scratcher"], ["needlewisp", "Needlewisp"], ["thumper", "Thumper"], ["anvilmole", "Anvil Mole"],
+        ["rustmoth", "Rustmoth"], ["barnacle", "Barnacle Crone"], ["dripling", "Dripling"], ["smearhound", "Smearhound"],
+        ["glasswing", "Glasswing"], ["cracklejack", "Cracklejack"], ["boltgnaw", "Boltgnaw"], ["springjack", "Springjack"]];
     const RELICS = {
-        lens: { name: "Brass Lens", icon: "🧿", text: "Photo cards give +50% XP" },
-        ink: { name: "Ink of Night", icon: "🫙", text: "Ledger & Notes cards give +50% XP" },
-        lamp: { name: "Lantern", icon: "🏮", text: "Start each foe with 2 Momentum" },
-        pouch: { name: "Deep Pouch", icon: "👝", text: "+1 card in hand" },
-        gear: { name: "Moon Gear", icon: "⚙️", text: "+3 Moonshards per foe" },
-        bolt: { name: "Lucky Bolt", icon: "🔩", text: "Cards have a 20% chance to crit for double" }
+        lens: { name: "Brass Lens", text: "Photo cards give +50% XP" },
+        ink: { name: "Ink of Night", text: "Ledger & Notes cards give +50% XP" },
+        lamp: { name: "Lantern", text: "Start each foe with 2 Momentum" },
+        pouch: { name: "Deep Pouch", text: "+1 card in hand" },
+        gear: { name: "Moon Gear", text: "+3 Moonshards per foe" },
+        bolt: { name: "Lucky Bolt", text: "Cards have a 20% chance to crit for double" }
     };
     const RANKS = ["Lantern-bearer", "Wayfarer", "Seer", "Moonwarden", "Thornknight", "Elder of the Wood", "Legend of the Pale Moon"];
     const rankOf = level => RANKS[Math.min(RANKS.length - 1, Math.floor((level - 1) / 3))];
@@ -105,9 +115,15 @@
 
     let uidSeq = 0;
     const inst = (id, up) => ({ uid: `c${Date.now().toString(36)}${(uidSeq++).toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`, id, up: Boolean(up) });
-    function newRun(packId, seed) {
-        const deck = STARTER.map(id => inst(id));
-        return { packId, deck, draw: shuffle(rng(seed), deck.map(c => c.uid)), discard: [], hand: [], relics: [], scrap: 0, xp: 0,
+    function speciesOf(gid, type) {
+        if (type === "boss") return { id: "sovereign", name: "The Pale Sovereign" };
+        const [id, name] = SPECIES[hash(`${gid}|species`) % SPECIES.length];
+        return { id, name: type === "elite" ? `Elder ${name}` : name };
+    }
+    function newRun(packId, seed, hero) {
+        const cls = CLASSES[hero] ? hero : "seer";
+        const deck = CLASSES[cls].deck.map(id => inst(id));
+        return { packId, hero: cls, deck, draw: shuffle(rng(seed), deck.map(c => c.uid)), discard: [], hand: [], relics: [], scrap: 0, xp: 0,
             momentum: 0, played: 0, first: true, foe: null, scored: {}, later: {}, defeated: {}, met: {}, events: {}, done: false, introduced: false, startedAt: Date.now() };
     }
     function drawOne(run, r) {
@@ -136,7 +152,7 @@
     }
     const rewardChoices = (r, level, n) => shuffle(r, Object.keys(CARDS).filter(id => CARDS[id].unlock <= level)).slice(0, n);
 
-    const rules = { hash, rng, shuffle, CARDS, RELICS, STARTER, BASE_XP, levelOf, need, rankOf, cardGain, withMomentum, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    const rules = { hash, rng, shuffle, CARDS, RELICS, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, withMomentum, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -148,11 +164,11 @@
         get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode: progress lives for this visit only */ } }
     };
-    const meta = Object.assign({ on: true, music: true, sfx: true, voice: true, mute: false, vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
+    const meta = Object.assign({ on: true, music: true, sfx: true, voice: true, mute: false, subs: "ja", vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
         store.get("vinderGameMeta", {}));
     const saveMeta = () => store.set("vinderGameMeta", meta);
     const runKey = id => `vinderGameRun:${id}`;
-    let ctx = null, run = null, item = null, screen = "home", holdUntil = 0;
+    let ctx = null, run = null, item = null, screen = "home", holdUntil = 0, greet = false;
     const justDrawn = new Set();
     const saveRun = () => { if (run) store.set(runKey(run.packId), run); };
     const cardOf = uid => run && run.deck.find(c => c.uid === uid);
@@ -177,19 +193,20 @@
     const nodeType = gid => (nodes().find(n => n.groupId === String(gid)) || { type: "foe" }).type;
     const groupById = gid => { const c = ctx && ctx.cards.find(x => String(x.group.groupId) === String(gid)); return c ? c.group : null; };
 
-    const ADJ = ["Rust-Eaten", "Hollow", "Crooked", "Moon-Mad", "Thorned", "Ashen", "Whispering", "Grinning", "Gilded", "Pale", "Cracked", "Mire-Born"];
-    const NOUN = ["Gremlin", "Wraith", "Hobgoblin", "Bogle", "Mite", "Golem", "Shade", "Wight", "Kelpie", "Changeling", "Imp", "Barghest"];
-    const TITLES = ["the Unblinking", "Keeper of Flaws", "the Many-Toothed", "of the Long Night", "the Scratcher", "Who Hides in Seams"];
-    function foeName(gid) {
-        const r = rng(hash(`${gid}|name`));
-        const type = nodeType(gid);
-        const base = `${pick(r, ADJ)} ${pick(r, NOUN)}`;
-        if (type === "boss") return `The ${pick(r, ["Pale", "Hollow", "Thorn", "Ash", "Iron", "Silent"])} Sovereign`;
-        return type === "elite" ? `${base}, ${pick(r, TITLES)}` : base;
+    const foeName = gid => speciesOf(gid, nodeType(gid)).name;
+    const ART = "assets/";
+    // An <img> that hides itself if the art file is missing, so the layout never shows a broken image.
+    function art(path, cls, alt) {
+        const i = h("img", cls);
+        i.alt = alt || "";
+        i.decoding = "async";
+        i.onerror = () => { i.remove(); };
+        i.src = `${ART}${path}.webp`;
+        return i;
     }
 
-    // ---------- audio: everything synthesised, so it works offline ----------
-    const A = { ctx: null, master: null, music: null, sfx: null, timer: 0, step: 0, next: 0, mood: null, noise: null };
+    // ---------- audio: recorded music, effects and Yui's voice (cached offline by the service worker) ----------
+    const A = { ctx: null, master: null, music: null, sfx: null, voice: null, bufs: new Map(), track: null, mood: null, speaking: null };
     function audio() {
         if (!A.ctx) {
             const C = root.AudioContext || root.webkitAudioContext;
@@ -198,13 +215,9 @@
             const comp = A.ctx.createDynamicsCompressor();
             comp.connect(A.ctx.destination);
             A.master = A.ctx.createGain(); A.master.connect(comp);
-            A.music = A.ctx.createGain(); A.music.connect(A.master);
-            A.sfx = A.ctx.createGain(); A.sfx.connect(A.master);
+            for (const bus of ["music", "sfx", "voice"]) { A[bus] = A.ctx.createGain(); A[bus].connect(A.master); }
             levels();
-            const len = A.ctx.sampleRate;
-            A.noise = A.ctx.createBuffer(1, len, len);
-            const d = A.noise.getChannelData(0);
-            for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+            ["hit", "card", "draw", "ui", "defeat"].forEach(n => loadBuf(`${ART}audio/sfx/${SFX[n]}.webm`));
         }
         if (A.ctx.state === "suspended" && !document.hidden) A.ctx.resume().catch(() => {});
         return A.ctx;
@@ -213,158 +226,144 @@
     function levels() {
         if (!A.ctx) return;
         A.master.gain.value = meta.mute ? 0 : meta.vol;
-        A.music.gain.value = meta.musicVol;
+        A.music.gain.value = A.speaking ? meta.musicVol * 0.35 : meta.musicVol;
         A.sfx.gain.value = meta.sfxVol;
+        A.voice.gain.value = meta.voiceVol;
     }
-    const mf = m => 440 * Math.pow(2, (m - 69) / 12);
-    function tone(dest, t, f, dur, type, vol, attack, glide, cutoff) {
-        const c = A.ctx, o = c.createOscillator(), g = c.createGain();
-        o.type = type || "triangle";
-        o.frequency.setValueAtTime(f, t);
-        if (glide) o.frequency.exponentialRampToValueAtTime(glide, t + dur);
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(vol || 0.2, t + (attack || 0.005));
-        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        let node = o;
-        if (cutoff) { const fl = c.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.value = cutoff; o.connect(fl); node = fl; }
-        node.connect(g); g.connect(dest);
-        o.start(t); o.stop(t + dur + 0.05);
-    }
-    function noise(dest, t, dur, vol, type, freq) {
-        const c = A.ctx, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
-        s.buffer = A.noise; f.type = type || "lowpass"; f.frequency.value = freq || 1000;
-        g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        s.connect(f); f.connect(g); g.connect(dest);
-        s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
-    }
-    function pad(t, f, dur, cutoff) {
-        const c = A.ctx, g = c.createGain(), fl = c.createBiquadFilter();
-        fl.type = "lowpass"; fl.frequency.value = cutoff;
-        g.gain.setValueAtTime(0.0001, t);
-        g.gain.linearRampToValueAtTime(0.022, t + 0.6);
-        g.gain.setValueAtTime(0.022, t + Math.max(0.7, dur - 0.4));
-        g.gain.linearRampToValueAtTime(0.0001, t + dur + 0.5);
-        fl.connect(g); g.connect(A.music);
-        for (const det of [-7, 7]) {
-            const o = c.createOscillator();
-            o.type = "sawtooth"; o.frequency.value = f; o.detune.value = det;
-            o.connect(fl); o.start(t); o.stop(t + dur + 0.6);
+    const loadBuf = url => {
+        if (!A.bufs.has(url)) {
+            A.bufs.set(url, fetch(url).then(r => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(String(r.status)))))
+                .then(b => A.ctx.decodeAudioData(b)).catch(() => { A.bufs.delete(url); return null; }));
         }
-    }
-    // Chords as MIDI notes. Explore is a music box over A minor; battle adds drums; the boss turns to D minor.
-    const MOODS = {
-        explore: { bpm: 72, prog: [[57, 60, 64], [53, 57, 60], [55, 60, 64], [55, 59, 62]], drums: 0, cutoff: 900, arpEvery: 2, arpUp: 24, arpWave: "sine", bassEvery: 8 },
-        battle: { bpm: 112, prog: [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]], drums: 1, cutoff: 1500, arpEvery: 1, arpUp: 12, arpWave: "triangle", bassEvery: 2 },
-        boss: { bpm: 126, prog: [[50, 53, 57], [46, 50, 53], [48, 52, 55], [45, 49, 52]], drums: 2, cutoff: 2100, arpEvery: 1, arpUp: 12, arpWave: "triangle", bassEvery: 2, lead: true }
+        return A.bufs.get(url);
     };
-    const ARPS = [[0, 1, 2, 1, 2, 0, 1, 2], [0, 2, 1, 2, 0, 2, 1, 0]];
-    const LEAD = [0, null, 2, 1, null, 0, 2, null];
-    function schedule() {
-        const c = A.ctx, m = MOODS[A.mood];
-        if (!c || !m) return;
-        const sd = 60 / m.bpm / 4;
-        while (A.next < c.currentTime + 0.15) {
-            const s = A.step % 16, bar = Math.floor(A.step / 16), chord = m.prog[bar % 4], t = A.next;
-            if (s === 0) for (const n of chord) pad(t, mf(n), sd * 16, m.cutoff);
-            if (s % m.bassEvery === 0) tone(A.music, t, mf(chord[0] - 24 + (m.drums && s % 4 === 2 ? 12 : 0)), sd * m.bassEvery * 0.9, m.drums === 2 ? "sawtooth" : "triangle", m.drums ? 0.13 : 0.09, 0.01, null, 650);
-            if (s % m.arpEvery === 0) {
-                const idx = ARPS[bar % 2][(s / m.arpEvery) % 8];
-                tone(A.music, t, mf(chord[idx] + m.arpUp + (m.drums && s >= 8 && bar % 4 === 3 ? 12 : 0)), m.drums ? sd * 0.9 : sd * 4, m.arpWave, m.drums ? 0.035 : 0.05, 0.004);
-            }
-            if (m.lead && s % 2 === 0) {
-                const n = LEAD[(s / 2 + bar) % 8];
-                if (n !== null) tone(A.music, t, mf(chord[n] + 24), sd * 2.2, "square", 0.02, 0.01, null, 2400);
-            }
-            if (m.drums) {
-                if (s % (m.drums === 2 ? 4 : 8) === 0 || (m.drums === 1 && s === 11)) tone(A.music, t, 150, 0.28, "sine", 0.55, 0.002, 40);
-                if (s === 4 || s === 12) noise(A.music, t, 0.16, 0.2, "bandpass", 1800);
-                if (s % 2 === 0) noise(A.music, t, 0.035, s % 4 === 2 ? 0.08 : 0.04, "highpass", 7000);
-            }
-            A.step++; A.next += sd;
-        }
+    async function play(url, bus, opts) {
+        if (!audio()) return null;
+        const buf = await loadBuf(url);
+        if (!buf) return null;
+        const src = A.ctx.createBufferSource(), g = A.ctx.createGain();
+        src.buffer = buf;
+        src.loop = Boolean(opts && opts.loop);
+        g.gain.value = opts && opts.gain !== undefined ? opts.gain : 1;
+        src.connect(g); g.connect(bus);
+        src.start();
+        return { src, g };
     }
-    function setMood(m) {
+    // Music crossfades between Lyria tracks by situation.
+    async function setMood(m) {
         if (!meta.on || !meta.music || meta.mute || document.hidden) m = null;
-        if (m === A.mood && (m === null || A.timer)) return;
+        if (m === A.mood) return;
         A.mood = m;
-        if (!m) { clearInterval(A.timer); A.timer = 0; return; }
-        if (!audio()) return;
-        A.step = 0;
-        A.next = A.ctx.currentTime + 0.08;
-        if (!A.timer) A.timer = setInterval(schedule, 25);
+        const old = A.track;
+        A.track = null;
+        if (old) { old.g.gain.setTargetAtTime(0, A.ctx.currentTime, 0.35); setTimeout(() => { try { old.src.stop(); } catch (_) { /* already stopped */ } }, 2500); }
+        if (!m) return;
+        const t = await play(`${ART}audio/music/${m}.webm`, A.music, { loop: true, gain: 0 });
+        if (!t) return;
+        if (A.mood !== m) { t.src.stop(); return; }
+        t.g.gain.setTargetAtTime(1, A.ctx.currentTime, 0.5);
+        A.track = t;
     }
+    let moodOverride = null;
     function mood() {
+        if (moodOverride) return setMood(moodOverride);
+        if (screen === "home") return setMood("title");
         if (screen !== "deck") return setMood("explore");
         const top = topCard();
-        setMood(!top ? "explore" : nodeType(top.group.groupId) === "boss" ? "boss" : "battle");
+        if (!top) return setMood("explore");
+        const type = nodeType(top.group.groupId);
+        setMood(type === "boss" ? "boss" : type === "elite" ? "elite" : "battle");
+    }
+    const SFX = { hit: "hit_x", crit: "crit_x", later: "later", flip: "flip", card: "card_x", draw: "draw_x", coin: "shards", defeat: "defeat_x",
+        victory: "victory", level: "levelup", undo: "undo", ui: "ui_tap", confirm: "confirm", foe: "foe_enter", elite: "elite_enter", boss: "boss_enter",
+        relic: "relic_x", upgrade: "upgrade", purchase: "purchase", burn: "burn", send: "send", map: "map_open", page: "page", rank: "rank" };
+    function sfx(name, gain) {
+        if (!meta.on || !meta.sfx || meta.mute || !SFX[name] || !audio()) return;
+        play(`${ART}audio/sfx/${SFX[name]}.webm`, A.sfx, { gain });
     }
 
-    function sfx(name) {
-        if (!meta.on || !meta.sfx || meta.mute || !audio()) return;
-        const t = A.ctx.currentTime + 0.01, o = A.sfx;
-        switch (name) {
-        case "hit": noise(o, t, 0.14, 0.5, "bandpass", 1600); tone(o, t, 140, 0.18, "sine", 0.6, 0.002, 45); break;
-        case "crit": noise(o, t, 0.2, 0.55, "bandpass", 2400); tone(o, t, 160, 0.2, "sine", 0.6, 0.002, 40); tone(o, t + 0.05, 1568, 0.4, "triangle", 0.12); tone(o, t + 0.1, 2093, 0.5, "triangle", 0.1); break;
-        case "later": noise(o, t, 0.35, 0.12, "highpass", 900); tone(o, t, 500, 0.3, "sine", 0.05, 0.05, 260); break;
-        case "flip": noise(o, t, 0.06, 0.08, "highpass", 3000); break;
-        case "card": [784, 988, 1319].forEach((f, i) => tone(o, t + i * 0.05, f, 0.22, "triangle", 0.1)); break;
-        case "draw": noise(o, t, 0.12, 0.08, "bandpass", 3500); break;
-        case "coin": tone(o, t, 1568, 0.08, "square", 0.05); tone(o, t + 0.07, 2093, 0.25, "square", 0.05); break;
-        case "defeat": noise(o, t, 0.7, 0.35, "lowpass", 900); tone(o, t, 420, 0.7, "sawtooth", 0.08, 0.005, 50, 1200); break;
-        case "victory": [523, 659, 784, 1047].forEach((f, i) => tone(o, t + 0.25 + i * 0.09, f, 0.5, "triangle", 0.14)); break;
-        case "level": [392, 523, 659, 784, 1047].forEach((f, i) => tone(o, t + i * 0.1, f, i === 4 ? 1.2 : 0.3, "square", 0.06, 0.01, null, 3000)); [523, 659, 784].forEach(f => tone(o, t + 0.5, f, 1.4, "triangle", 0.08, 0.05)); break;
-        case "undo": tone(o, t, 900, 0.3, "sine", 0.1, 0.01, 300); break;
-        case "ui": tone(o, t, 880, 0.06, "triangle", 0.06); break;
-        case "foe": tone(o, t, 110, 0.6, "sawtooth", 0.08, 0.02, 82, 600); noise(o, t, 0.5, 0.1, "lowpass", 400); break;
-        default: break;
-        }
-    }
-
-    // ---------- narration: browser speech plus on-screen subtitles ----------
+    // ---------- narration: Yui (ElevenLabs v4), Japanese subtitles with a tap for the other language ----------
+    const YUI = {
+        first_time: ["はじめまして。わたしはユイ。今夜の道案内をするね。", "Nice to meet you. I'm Yui. I'll be your guide tonight."],
+        welcome_back: ["おかえり。月が待ってたよ。", "Welcome back. The moon was waiting."],
+        intro_1: ["月が昇ったよ。今夜の道に、何かが潜んでる。…よく見てね、全部。", "The moon is up. Something's lurking on tonight's road… Look closely. At everything."],
+        intro_2: ["さあ、物語の始まり。どんな小さな傷も、見逃さないで。", "Here begins the tale. Don't let a single scratch slip past you."],
+        class_seer: ["見ることが、あなたの力。何も見逃さない人。", "Seeing is your power. The one who misses nothing."],
+        class_scribe: ["書くことが、あなたの力。一字も間違えない人。", "Writing is your power. The one who never gets a single letter wrong."],
+        class_warden: ["守ることが、あなたの力。最後まで倒れない人。", "Guarding is your power. The one who stands till the very end."],
+        foe_1: ["あれ、何か出てきた。", "Huh, something's crawled out."],
+        foe_2: ["ほら、また一匹いるよ。", "Look, there's another one."],
+        foe_3: ["月明かりに、影がひとつ。", "One shadow in the moonlight."],
+        elite_1: ["こいつは手強いよ。欠点を上手に隠してる。", "This one's tough. It hides its flaws well."],
+        elite_2: ["焦らないで。全部見てから、決めよう。", "Don't rush. See it all, then decide."],
+        boss_1: ["来たね…今夜の、最後の相手。", "Here it comes… tonight's final foe."],
+        boss_2: ["これを倒せば、物語はあなたのもの。", "Defeat this, and the tale is yours."],
+        defeat_1: ["やった、きれいに決まったね。", "Yes, that was clean."],
+        defeat_2: ["お見事。ちゃんと見てたね。", "Well done. You really looked."],
+        defeat_3: ["道が静かになった。…今のところはね。", "The road's gone quiet. For now, anyway."],
+        defeat_4: ["ふふ、残念でした。", "Heh, too bad for you."],
+        retreat_1: ["逃げちゃった。でも、また会えるよ。", "It slipped away. But we'll meet it again."],
+        later_1: ["うん、あとでゆっくり見よう。", "Okay, we'll take a proper look later."],
+        revisit_1: ["戻ってきたね。えらいえらい。", "You came back to it. Good, good."],
+        undo_1: ["ちょっと待って、やり直し？いいよ。", "Wait, a do-over? Sure."],
+        card_1: ["いい目してる。", "You've got a good eye."],
+        card_2: ["そう、それそれ！そういうところ！", "Yes, that's it! That's the stuff!"],
+        crit_1: ["会心の一撃！", "Critical hit!"],
+        momentum_1: ["勢いに乗ってるね！", "You're on a roll!"],
+        level_1: ["レベルアップ！目がどんどん鋭くなってる。", "Level up! Your eye keeps getting sharper."],
+        level_2: ["月が、あなたの名前を覚えたみたい。", "Looks like the moon remembers your name now."],
+        level_3: ["すごい…どんどん強くなるね。", "Wow… you just keep getting stronger."],
+        unlock_1: ["新しいカードが来たよ。試してみて。", "A new card's arrived. Give it a try."],
+        camp_1: ["焚き火だ。少し休んで、技を磨こう。", "A campfire. Let's rest a little and sharpen a technique."],
+        shop_1: ["旅の商人さん。月のかけらで、いいもの買えるよ。", "A wandering trader. Moonshards buy nice things."],
+        cache_1: ["苔むした宝箱…何が入ってるかな。", "A mossy treasure chest… wonder what's inside."],
+        relic_1: ["それ、大事にしてね。", "Take good care of that."],
+        burn_1: ["さよなら。もう、いらないよね。", "Goodbye. You don't need it anymore."],
+        grade_s: ["完璧。文句なしのSランク！", "Perfect. An undisputed S rank!"],
+        end_1: ["今夜の物語は、ここでおしまい。報告を送ってね。", "Tonight's tale ends here. Send your report."],
+        end_2: ["夜を越えたね。お疲れさま。", "You made it through the night. Good work."],
+        send_1: ["報告、夜空に飛んでった。お疲れさま！", "The report's flown off into the night sky. Good work!"]
+    };
+    const GROUPS = { intro: ["intro_1", "intro_2"], elite: ["elite_1", "elite_2"], boss: ["boss_1", "boss_2"], foe: ["foe_1", "foe_2", "foe_3"],
+        defeat: ["defeat_1", "defeat_2", "defeat_3", "defeat_4"], level: ["level_1", "level_2", "level_3"], end: ["end_1", "end_2"], card: ["card_1", "card_2"] };
+    const line = key => { const id = GROUPS[key] ? pick(Math.random, GROUPS[key]) : key; return YUI[id] ? { id, ja: YUI[id][0], en: YUI[id][1] } : null; };
     const sub = h("div", "g-sub");
     sub.setAttribute("aria-live", "polite");
+    sub.setAttribute("role", "button");
     sub.hidden = true;
-    let subTimer = 0;
-    function voice() {
-        const vs = (root.speechSynthesis && root.speechSynthesis.getVoices()) || [];
-        const en = vs.filter(v => /^en/i.test(v.lang));
-        return en.find(v => /UK English|Daniel|Arthur|George/i.test(v.name)) || en[0] || null;
-    }
-    function say(text) {
-        if (!meta.on || !text) return;
-        sub.textContent = text;
+    let subTimer = 0, subLine = null;
+    function showSub(l, keep) {
+        subLine = l;
+        const main = meta.subs === "en" ? l.en : l.ja, alt = meta.subs === "en" ? l.ja : l.en;
+        const m = h("span", `g-sub-main${meta.subs === "en" ? "" : " g-ja"}`, main);
+        m.lang = meta.subs === "en" ? "en" : "ja";
+        const a = h("span", `g-sub-alt${meta.subs === "en" ? " g-ja" : ""}`, alt);
+        a.lang = meta.subs === "en" ? "ja" : "en";
+        a.hidden = !keep;
+        sub.replaceChildren(m, a);
+        sub.setAttribute("aria-label", `${main}. Tap to show ${meta.subs === "en" ? "Japanese" : "English"}`);
         sub.hidden = false;
-        sub.classList.remove("g-sub-in"); void sub.offsetWidth; sub.classList.add("g-sub-in");
+        if (!keep) { sub.classList.remove("g-sub-in"); void sub.offsetWidth; sub.classList.add("g-sub-in"); }
         clearTimeout(subTimer);
-        subTimer = setTimeout(() => { sub.hidden = true; }, 1800 + text.length * 55);
-        if (meta.mute || !meta.voice || !root.speechSynthesis || typeof root.SpeechSynthesisUtterance !== "function") return;
-        try {
-            root.speechSynthesis.cancel();
-            const u = new root.SpeechSynthesisUtterance(text);
-            const v = voice();
-            if (v) u.voice = v;
-            u.rate = 0.95; u.pitch = 0.82; u.volume = Math.min(1, meta.vol * meta.voiceVol);
-            const duck = to => { if (A.music) A.music.gain.setTargetAtTime(to, A.ctx.currentTime, 0.15); };
-            u.onstart = () => duck(meta.musicVol * 0.3);
-            u.onend = u.onerror = () => duck(meta.musicVol);
-            root.speechSynthesis.speak(u);
-        } catch (_) { /* subtitles still show */ }
+        subTimer = setTimeout(() => { sub.hidden = true; }, 2600 + l.ja.length * 110 + (keep ? 2500 : 0));
     }
-    const fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? "");
-    const LINES = {
-        intro: ["Once, beneath a pale moon, an inspector set out on the road called {pack}. {n} foes waited in the dark.", "The moon rises over {pack}. {n} foes stir in the shadows. Look closely, and none will hide from you."],
-        elite: ["A stronger foe bars the road. It hides its flaws well. Look closely.", "This one has teeth. Take your time, and see everything."],
-        boss: ["The last foe of {pack} rises. Finish this, and the tale is yours.", "Here waits {foe}. The final page of tonight's story."],
-        foe: ["Something stirs.", "{foe} creeps out of the dark.", "Another shape in the moonlight."],
-        defeat: ["{foe} falls.", "Cleared, and well seen.", "The road ahead is quiet. For now.", "Clean work, inspector."],
-        level: ["Level {lvl}. Your eye grows sharper.", "Level {lvl}. The moon remembers your name.", "Level {lvl}. They will call you {rank}."],
-        end: ["And so the tale of {pack} ends. {foes} foes vanquished. Send your report, inspector.", "The night is won. {foes} foes, {xp} experience. Now send the report home."],
-        camp: ["A campfire in the woods. Rest, and sharpen one technique."],
-        shop: ["A wandering trader lifts their lantern. Moonshards, for wonders."],
-        cache: ["A forgotten cache, half buried in moss. Take what calls to you."],
-        send: ["The report flies off into the night. Well done.", "Sent. The story of tonight is told."]
-    };
-    const line = (k, o) => fill(pick(Math.random, LINES[k]), o || {});
+    sub.addEventListener("click", () => { if (subLine) showSub(subLine, true); });
+    // Yui does not talk over herself; "important" lines (boss, level-up, the end) cut in.
+    function say(l, important) {
+        if (!meta.on || !l) return;
+        if (A.speaking && !important) return;
+        if (meta.subs !== "off") showSub(l);
+        if (meta.mute || !meta.voice) return;
+        const marker = {};
+        A.speaking = marker;
+        levels();
+        play(`${ART}audio/voice/${l.id}.webm`, A.voice).then(v => {
+            if (!v || A.speaking !== marker) { if (v) v.src.stop(); if (A.speaking === marker) { A.speaking = null; levels(); } return; }
+            if (A.voiceNow) { try { A.voiceNow.src.stop(); } catch (_) { /* done */ } }
+            A.voiceNow = v;
+            v.src.onended = () => { if (A.speaking === marker) { A.speaking = null; A.voiceNow = null; levels(); } };
+        });
+    }
 
     // ---------- VFX: one canvas for particles, DOM for numbers ----------
     const fxCanvas = h("canvas", "g-fx");
@@ -384,7 +383,7 @@
             const sp = (o.speed || 4) * (0.35 + Math.random() * 0.9);
             const life = (o.life || 40) * (0.6 + Math.random() * 0.6);
             parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - (o.lift || 0), life, max: life, size: (o.size || 2.5) * (0.6 + Math.random() * 0.8),
-                color: o.colors[Math.floor(Math.random() * o.colors.length)], g: o.gravity ?? 0.12, shape: o.shape || "spark" });
+                color: o.colors[Math.floor(Math.random() * o.colors.length)], g: o.gravity ?? 0.22, shape: o.shape || "chip", rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4 });
         }
         if (!raf) raf = requestAnimationFrame(tick);
     }
@@ -394,19 +393,21 @@
             const p = parts[i];
             p.x += p.vx; p.y += p.vy; p.vy += p.g; p.vx *= 0.97; p.life--;
             if (p.life <= 0) { parts.splice(i, 1); continue; }
-            fx2.globalAlpha = Math.min(1, p.life / p.max * 1.4);
-            fx2.strokeStyle = fx2.fillStyle = p.color;
-            if (p.shape === "spark") {
-                fx2.lineWidth = p.size; fx2.lineCap = "round";
-                fx2.beginPath(); fx2.moveTo(p.x, p.y); fx2.lineTo(p.x - p.vx * 2.5, p.y - p.vy * 2.5); fx2.stroke();
-            } else if (p.shape === "star") {
-                const s = p.size * 1.6;
-                fx2.beginPath();
-                fx2.moveTo(p.x, p.y - s); fx2.quadraticCurveTo(p.x, p.y, p.x + s, p.y); fx2.quadraticCurveTo(p.x, p.y, p.x, p.y + s);
-                fx2.quadraticCurveTo(p.x, p.y, p.x - s, p.y); fx2.quadraticCurveTo(p.x, p.y, p.x, p.y - s); fx2.fill();
+            fx2.globalAlpha = Math.min(1, p.life / p.max * 2);
+            fx2.fillStyle = p.color;
+            p.rot += p.vr;
+            fx2.save();
+            fx2.translate(p.x, p.y);
+            fx2.rotate(p.rot);
+            if (p.shape === "tri") {
+                fx2.beginPath(); fx2.moveTo(0, -p.size * 1.6); fx2.lineTo(p.size * 1.4, p.size); fx2.lineTo(-p.size * 1.4, p.size); fx2.fill();
+            } else if (p.shape === "dot") {
+                fx2.beginPath(); fx2.arc(0, 0, p.size, 0, Math.PI * 2); fx2.fill();
             } else {
-                fx2.beginPath(); fx2.arc(p.x, p.y, p.size, 0, Math.PI * 2); fx2.fill();
+                // a paper chip: flat rectangle whose width flips as it tumbles
+                fx2.fillRect(-p.size * 1.6 * Math.cos(p.rot * 2), -p.size * 0.8, p.size * 3.2 * Math.cos(p.rot * 2), p.size * 1.6);
             }
+            fx2.restore();
         }
         fx2.globalAlpha = 1;
         raf = parts.length ? requestAnimationFrame(tick) : 0;
@@ -427,34 +428,51 @@
     }
 
     // ---------- HUD ----------
+    // Scene band under the top bar: the foe on the road, its name plate and life bar.
     const hud = h("div", "g-hud");
     hud.id = "gHud";
     hud.innerHTML = `
-        <div class="g-top">
-            <button type="button" class="g-route-strip" id="gStrip" aria-label="Open the route map"></button>
-            <button type="button" class="g-mute" id="gMute" aria-label="Mute all sound" aria-pressed="false">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="g-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="g-x" d="M16 9l6 6M22 9l-6 6"/></svg>
-            </button>
-        </div>
-        <div class="g-foe">
-            <div class="g-portrait" id="gPortrait"><span class="g-slash"></span></div>
-            <div class="g-foe-info">
+        <div class="g-scene">
+            <div class="g-top">
+                <button type="button" class="g-route-strip" id="gStrip" aria-label="Open the route map"></button>
+                <button type="button" class="g-mute" id="gMute" aria-label="Mute all sound" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="g-wave" d="M16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/><path class="g-x" d="M16 9l6 6M22 9l-6 6"/></svg>
+                </button>
+            </div>
+            <div class="g-portrait" id="gPortrait"></div>
+            <div class="g-plate">
                 <div class="g-foe-name"><b id="gFoeName"></b><span class="g-tag" id="gFoeTag"></span></div>
                 <div class="g-foe-sub" id="gFoeSub"></div>
-                <div class="g-hp" role="meter" aria-label="Left on this foe" id="gHp"><span id="gHpFill"></span><em id="gHpText"></em></div>
+                <div class="g-life" role="meter" aria-label="Left to decide on this foe" id="gHp"></div>
             </div>
-            <button type="button" class="g-me" id="gMe" aria-label="Your legend">
+        </div>`;
+    // Dock above the verdict buttons: hero, hand, resources.
+    const dock = h("div", "g-dock");
+    dock.id = "gDock";
+    dock.innerHTML = `
+        <div class="g-tip" id="gTip" hidden></div>
+        <div class="g-dock-row">
+            <button type="button" class="g-hero" id="gMe" aria-label="Your legend">
+                <span class="g-hero-ring" id="gXpFill"></span>
+                <span class="g-hero-face" id="gHeroFace"></span>
                 <span class="g-lvl" id="gLvl"></span>
-                <span class="g-xp"><span id="gXpFill"></span></span>
-                <span class="g-res"><span id="gMom" title="Momentum"></span><span id="gScrap" title="Moonshards"></span></span>
             </button>
-        </div>
-        <div class="g-hand" id="gHand" aria-label="Your hand"></div>
-        <div class="g-tip" id="gTip" hidden></div>`;
+            <div class="g-hand" id="gHand" aria-label="Your hand"></div>
+            <div class="g-res">
+                <span id="gMom" title="Momentum"></span>
+                <span id="gScrap" title="Moonshards"></span>
+            </div>
+        </div>`;
     const deckbar = document.querySelector("#deck .deckbar");
     if (deckbar) deckbar.after(hud);
+    const actionsBar = document.querySelector("#deck .actions");
+    if (actionsBar) actionsBar.before(dock);
     const $ = id => document.getElementById(id);
     const portraitEl = $("gPortrait");
+    const ICON = {
+        mom: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 5 14h6l-1 8 8-12h-6z"/></svg>`,
+        shard: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 19 9 12 22 5 9z"/></svg>`
+    };
 
     const overlay = h("div", "g-overlay");
     overlay.hidden = true;
@@ -476,9 +494,8 @@
 
     function portraitSvg(gid, type) {
         const r = rng(hash(`${gid}|face`));
-        const hue = Math.floor(r() * 360);
-        const id = `pg${hash(gid).toString(36)}`;
-        const eye = type === "boss" ? "#ff4d6d" : type === "elite" ? "#ffd166" : "#bff6ff";
+        const body = type === "boss" ? "#9aa3a8" : pick(r, ["#2f4f57", "#9aa3a8", "#6f7d5a", "#b4562f"]);
+            const eye = "#e6dcc6";
         const pts = [];
         const n = 11, big = type === "boss" ? 4 : 0;
         for (let i = 0; i < n; i++) {
@@ -490,24 +507,22 @@
         let d = `M${mid(pts[n - 1], pts[0]).map(v => v.toFixed(1)).join(" ")}`;
         for (let i = 0; i < n; i++) { const m = mid(pts[i], pts[(i + 1) % n]); d += ` Q${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} ${m[0].toFixed(1)} ${m[1].toFixed(1)}`; }
         const horns = type !== "foe" || r() > 0.45
-            ? `<path d="M33 36 L${24 - r() * 8} ${12 - r() * 6} L42 31Z M67 36 L${76 + r() * 8} ${12 - r() * 6} L58 31Z" fill="hsl(${hue} 30% 22%)"/>` : "";
+            ? `<path d="M33 36 L${24 - r() * 8} ${12 - r() * 6} L42 31Z M67 36 L${76 + r() * 8} ${12 - r() * 6} L58 31Z" fill="#203840"/>` : "";
         const eyes = 1 + Math.floor(r() * 3);
         const ex = eyes === 1 ? [50] : eyes === 2 ? [40, 60] : [36, 50, 64];
         const eyeSvg = ex.map((x, i) => {
             const y = eyes === 3 && i === 1 ? 44 : 50, s = eyes === 1 ? 8 : 5.5;
-            return `<ellipse cx="${x}" cy="${y}" rx="${s}" ry="${s * 0.8}" fill="#0b0a16"/><circle class="g-eye" cx="${x}" cy="${y}" r="${s * 0.45}" fill="${eye}"/>`;
+            return `<ellipse cx="${x}" cy="${y}" rx="${s}" ry="${s * 0.8}" fill="#121829"/><circle class="g-eye" cx="${x}" cy="${y}" r="${s * 0.45}" fill="${eye}"/>`;
         }).join("");
         let teeth = "M36 66";
         const tn = 4 + Math.floor(r() * 4);
         for (let i = 1; i <= tn; i++) teeth += ` L${36 + (28 / tn) * (i - 0.5)} ${i % 2 ? 73 : 70} L${36 + (28 / tn) * i} 66`;
-        const crown = type === "boss" ? `<path d="M34 24 L38 10 L44 20 L50 6 L56 20 L62 10 L66 24Z" fill="#e9c46a" stroke="#7a5a12" stroke-width="1.2"/>` : "";
+        const crown = type === "boss" ? `<path d="M34 24 L38 10 L44 20 L50 6 L56 20 L62 10 L66 24Z" fill="#e6dcc6"/>` : "";
         return `<svg viewBox="0 0 100 100" aria-hidden="true" class="g-face">
-            <defs><radialGradient id="${id}" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="hsl(${hue} 55% 52%)"/><stop offset="1" stop-color="hsl(${hue} 50% 18%)"/></radialGradient></defs>
-            ${horns}<path d="${d}" fill="url(#${id})" stroke="hsl(${hue} 40% 10%)" stroke-width="1.5"/>${crown}${eyeSvg}
-            <path d="${teeth}" fill="none" stroke="#f1e9d2" stroke-width="2" stroke-linejoin="round"/></svg>`;
+            ${horns}<path d="${d}" fill="${body}"/>${crown}${eyeSvg}
+            <path d="${teeth}" fill="none" stroke="#e6dcc6" stroke-width="2" stroke-linejoin="round"/></svg>`;
     }
 
-    const NODE_ICON = { foe: "⚔️", elite: "💀", boss: "🌕", camp: "🔥", shop: "🕯️", cache: "🗝️" };
     const NODE_NAME = { camp: "Campfire", shop: "Wandering trader", cache: "Forgotten cache" };
     const nodeDone = n => n.groupId ? Boolean(run && run.defeated[n.groupId]) : Boolean(run && run.events[n.id]);
 
@@ -521,13 +536,21 @@
     }
     function renderMe() {
         const L = levelOf(meta.xp);
-        $("gLvl").textContent = `Lv ${L.level}`;
-        $("gXpFill").style.width = `${(L.into / L.need) * 100}%`;
-        $("gMom").textContent = `⚡${run ? run.momentum : 0}`;
-        $("gScrap").textContent = `✧${run ? run.scrap : 0}`;
-        homeBtn.textContent = `🌕 Pale Moon · Lv ${L.level} ${rankOf(L.level)}`;
+        $("gLvl").textContent = String(L.level);
+        $("gXpFill").style.setProperty("--xp", `${Math.round((L.into / L.need) * 360)}deg`);
+        $("gMom").innerHTML = `${ICON.mom}<b>${run ? run.momentum : 0}</b>`;
+        $("gScrap").innerHTML = `${ICON.shard}<b>${run ? run.scrap : 0}</b>`;
+        const hero = run && CLASSES[run.hero] ? run.hero : "seer";
+        const face = $("gHeroFace");
+        if (face.dataset.hero !== hero) {
+            face.dataset.hero = hero;
+            face.replaceChildren(h("span", "g-initial", CLASSES[hero].name[0]), art(`heroes/${hero}`, "g-hero-img", CLASSES[hero].name));
+        }
+        $("gMe").setAttribute("aria-label", `${CLASSES[hero].name}, level ${L.level}. Your legend and settings`);
+        homeBtn.textContent = `Pale Moon · Lv ${L.level} ${rankOf(L.level)}`;
     }
-    const gainText = (id, g) => [g.xp && `+${g.xp} XP`, g.mom && `+${g.mom} ⚡`, g.scrap && `+${g.scrap} ✧`, CARDS[id].momReset && "spends ⚡"].filter(Boolean).join(" · ");
+    const rarity = def => def.unlock >= 4 ? "epic" : def.unlock >= 2 ? "rare" : "common";
+    const gainText = (id, g) => [g.xp && `+${g.xp} XP`, g.mom && `+${g.mom} momentum`, g.scrap && `+${g.scrap} shards`, CARDS[id].momReset && "spends momentum"].filter(Boolean).join(" · ");
     function renderHand() {
         const hand = $("gHand");
         hand.replaceChildren();
@@ -536,25 +559,41 @@
             const c = cardOf(uid);
             if (!c) continue;
             const def = CARDS[c.id];
-            const b = h("button", `g-card${c.up ? " g-up" : ""}${justDrawn.has(uid) ? " g-draw" : ""}`);
+            const b = h("button", `g-card g-${rarity(def)}${c.up ? " g-up" : ""}${justDrawn.has(uid) ? " g-draw" : ""}`);
             b.type = "button";
             b.dataset.uid = uid;
             b.setAttribute("aria-label", `${def.name}${c.up ? " plus" : ""}: ${def.text}, ${gainText(c.id, cardGain(c.id, c.up, run.relics))}`);
-            b.append(h("span", "g-card-icon", def.icon), h("span", "g-card-name", `${def.name}${c.up ? "+" : ""}`));
+            const pic = h("span", "g-card-art");
+            pic.append(h("span", "g-initial", def.name[0]), art(`cards/${c.id}`, "", ""));
+            b.append(pic, h("span", "g-card-name", def.name));
+            if (c.up) b.appendChild(h("span", "g-plus", "+"));
             b.addEventListener("click", () => {
                 const tip = $("gTip");
                 const same = !tip.hidden && tip.dataset.uid === uid;
                 tip.hidden = same;
                 tip.dataset.uid = uid;
-                tip.textContent = `${def.icon} ${def.name}${c.up ? "+" : ""}: ${def.text} → ${gainText(c.id, cardGain(c.id, c.up, run.relics))}`;
+                tip.replaceChildren(h("b", "", `${def.name}${c.up ? "+" : ""}`), h("span", "", def.text), h("em", "", gainText(c.id, cardGain(c.id, c.up, run.relics))));
+                sfx("ui");
             });
             hand.appendChild(b);
         }
         justDrawn.clear();
     }
+    let lifeShown = { gid: null, gone: new Set() };
+    function renderLife(gid, mine) {
+        const life = $("gHp");
+        const before = lifeShown.gid === gid ? lifeShown.gone : new Set();
+        const gone = new Set(mine.filter(c => V.isDecided(ctx.actions, ctx.decisions[c.key])).map(c => c.key));
+        life.replaceChildren(...mine.map(c => h("i", gone.has(c.key) ? (before.has(c.key) ? "gone" : "gone g-drop") : "")));
+        life.setAttribute("aria-valuemin", "0");
+        life.setAttribute("aria-valuemax", String(mine.length));
+        life.setAttribute("aria-valuenow", String(mine.length - gone.size));
+        life.setAttribute("aria-valuetext", `${mine.length - gone.size} of ${mine.length} left`);
+        lifeShown = { gid, gone };
+    }
     function renderHud() {
         document.body.classList.toggle("game-on", meta.on);
-        hud.hidden = !meta.on || !ctx;
+        hud.hidden = dock.hidden = !meta.on || !ctx;
         renderMe();
         if (hud.hidden) return;
         renderStrip();
@@ -562,32 +601,32 @@
         if (!top) {
             portraitEl.dataset.gid = "";
             portraitEl.className = "g-portrait g-clear";
-            portraitEl.innerHTML = `<span class="g-slash"></span><span class="g-moon" aria-hidden="true">🌕</span>`;
+            portraitEl.replaceChildren();
             $("gFoeName").textContent = "The road is clear";
             $("gFoeTag").textContent = "";
             $("gFoeSub").textContent = ctx.pack.title || "";
-            $("gHpFill").style.width = "0%";
-            $("gHpText").textContent = "";
+            $("gHp").replaceChildren();
             renderHand();
             return;
         }
         const gid = String(top.group.groupId), type = nodeType(gid);
         if (portraitEl.dataset.gid !== gid) {
+            const sp = speciesOf(gid, type);
             portraitEl.dataset.gid = gid;
             portraitEl.className = `g-portrait g-${type}`;
-            portraitEl.innerHTML = `${portraitSvg(gid, type)}<span class="g-slash"></span>`;
+            portraitEl.innerHTML = portraitSvg(gid, type);
+            // The animated idle loop if one exists, otherwise the still painting.
+            const img = art(`foes/anim/${sp.id}`, "g-foe-img", sp.name);
+            img.onerror = () => { img.onerror = () => img.remove(); img.src = `${ART}foes/${sp.id}.webp`; };
+            img.onload = () => portraitEl.classList.add("has-art");
+            portraitEl.appendChild(img);
             if (!reduce) restartClass(portraitEl, "g-enter", 700);
         }
         $("gFoeName").textContent = foeName(gid);
-        $("gFoeTag").textContent = type === "boss" ? "BOSS" : type === "elite" ? "ELITE" : "";
+        $("gFoeTag").textContent = type === "boss" ? "Boss" : type === "elite" ? "Elite" : "";
         $("gFoeTag").className = `g-tag g-tag-${type}`;
         $("gFoeSub").textContent = [top.group.title, top.group.subtitle].filter(Boolean).join(" · ");
-        const mine = ctx.cards.filter(c => String(c.group.groupId) === gid);
-        const left = mine.filter(c => !V.isDecided(ctx.actions, ctx.decisions[c.key])).length;
-        $("gHpFill").style.width = `${(left / mine.length) * 100}%`;
-        $("gHpText").textContent = `${left} / ${mine.length}`;
-        $("gHp").setAttribute("aria-valuenow", String(left));
-        $("gHp").setAttribute("aria-valuemax", String(mine.length));
+        renderLife(gid, ctx.cards.filter(c => String(c.group.groupId) === gid));
         renderHand();
     }
 
@@ -597,6 +636,7 @@
     function enqueue(fn) { queue.push(fn); if (!showing) nextOverlay(); }
     function nextOverlay() {
         const fn = queue.shift();
+        if (moodOverride) { moodOverride = null; mood(); }
         if (!fn) {
             showing = false;
             overlay.hidden = true;
@@ -634,7 +674,10 @@
         const def = CARDS[id];
         const b = h("button", `g-big g-r${Math.min(4, def.unlock)}${up ? " g-up" : ""}`);
         b.type = "button";
-        b.append(h("span", "g-big-icon", def.icon), h("span", "g-big-name", `${def.name}${up ? "+" : ""}`), h("span", "g-big-text", def.text),
+        const pic = h("span", "g-big-art");
+        pic.append(h("span", "g-initial", def.name[0]), art(`cards/${id}`, "", ""));
+        b.classList.add(`g-${rarity(def)}`);
+        b.append(pic, h("span", "g-big-name", `${def.name}${up ? "+" : ""}`), h("span", "g-big-text", def.text),
             h("span", "g-big-gain", gainText(id, cardGain(id, up, run ? run.relics : []))));
         if (note) b.appendChild(h("span", "g-big-note", note));
         return b;
@@ -643,7 +686,9 @@
         const r = RELICS[id];
         const b = h("button", "g-relic");
         b.type = "button";
-        b.append(h("span", "g-relic-icon", r.icon), h("span", "g-relic-name", r.name), h("span", "g-relic-text", r.text));
+        const ic = h("span", "g-relic-icon");
+        ic.append(h("span", "g-initial", r.name[0]), art(`ui/relic-${id}`, "", ""));
+        b.append(ic, h("span", "g-relic-name", r.name), h("span", "g-relic-text", r.text));
         if (note) b.appendChild(h("span", "g-big-note", note));
         return b;
     }
@@ -652,7 +697,9 @@
         for (const n of nodes()) {
             const li = h("li", `g-node g-node-${n.type}${nodeDone(n) ? " done" : ""}${run && n.groupId === run.foe ? " here" : ""}`);
             const g = n.groupId ? groupById(n.groupId) : null;
-            li.append(h("span", "g-node-icon", NODE_ICON[n.type]));
+            const ic = h("span", "g-node-icon");
+            ic.appendChild(art(`ui/node-${n.type}`, "", ""));
+            li.append(ic);
             const txt = h("span", "g-node-text");
             txt.append(h("b", "", n.groupId ? foeName(n.groupId) : NODE_NAME[n.type]));
             if (g) txt.append(h("small", "", [g.title, `${n.count} to decide`].filter(Boolean).join(" · ")));
@@ -664,21 +711,55 @@
     function introOverlay() {
         const body = h("div", "g-body");
         const fs = nodes().filter(n => n.groupId).length;
-        const text = line("intro", { pack: ctx.pack.title || "tonight's pack", n: fs });
-        body.append(h("p", "g-lore", text), routeEl(),
+        const spoken = line(meta.runs || meta.verdicts ? "intro" : "first_time");
+        const text = line("intro").en;
+        // Choose a class: each deals its own starter deck. Only offered before the first card is played.
+        const heroes = h("div", "g-heroes");
+        heroes.setAttribute("role", "radiogroup");
+        heroes.setAttribute("aria-label", "Choose who walks the road tonight");
+        const pickHero = id => {
+            if (run.hero !== id) {
+                const fresh = newRun(run.packId, hash(run.packId), id);
+                Object.assign(run, { hero: fresh.hero, deck: fresh.deck, draw: fresh.draw, discard: [], hand: [] });
+                saveRun();
+            }
+            heroes.querySelectorAll(".g-hero-pick").forEach(b => b.setAttribute("aria-checked", String(b.dataset.hero === id)));
+            renderMe();
+        };
+        for (const [id, c] of Object.entries(CLASSES)) {
+            const b = h("button", "g-hero-pick");
+            b.type = "button";
+            b.dataset.hero = id;
+            b.setAttribute("role", "radio");
+            const face = h("span", "g-hero-pick-face");
+            face.append(h("span", "g-initial", c.name[0]), art(`heroes/${id}`, "", ""));
+            b.append(face, h("b", "", c.name), h("small", "", c.text));
+            b.addEventListener("click", () => { sfx("ui"); pickHero(id); say(line(`class_${id}`), true); });
+            heroes.appendChild(b);
+        }
+        body.append(h("p", "g-lore", text), heroes, routeEl(),
             h("p", "g-fine", "Every verdict strikes the same blow, whatever you choose. Cards reward looking closely: flipping photos, zooming, reading details, checking values. Choose what's true."));
-        panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Begin", primary: true, onClick: () => { audio(); mood(); } }] });
-        say(text);
+        panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Begin", primary: true, onClick: () => {
+            audio(); mood();
+            // The hand was dealt before the class was chosen; deal it again from the chosen deck.
+            if (!run.played && !Object.keys(run.scored).length) {
+                run.draw = shuffle(Math.random, run.deck.map(c => c.uid));
+                run.discard = []; run.hand = []; run.foe = null;
+                sync();
+            }
+        } }] });
+        pickHero(run.hero || "seer");
+        say(spoken, true);
     }
     function mapOverlay() {
         const body = h("div", "g-body");
         body.appendChild(routeEl());
         if (run && run.relics.length) {
             const rel = h("div", "g-relic-row");
-            for (const id of run.relics) rel.appendChild(h("span", "g-relic-chip", `${RELICS[id].icon} ${RELICS[id].name}`));
+            for (const id of run.relics) rel.appendChild(h("span", "g-relic-chip", RELICS[id].name));
             body.appendChild(rel);
         }
-        if (run) body.appendChild(h("p", "g-fine", `Deck: ${run.deck.length} cards · ✧${run.scrap} Moonshards`));
+        if (run) body.appendChild(h("p", "g-fine", `Deck: ${run.deck.length} cards · ${run.scrap} moonshards`));
         panel({ kicker: "The road", title: ctx.pack.title || "Route", body, actions: [{ label: "Close", primary: true }] });
     }
     function rewardOverlay(gid) {
@@ -689,7 +770,7 @@
             const b = bigCard(id, false);
             b.addEventListener("click", () => {
                 addCard(run, id, false); saveRun(); sfx("card");
-                const c = center(b); burst(c.x, c.y, { n: 30, colors: ["#e9c46a", "#fff3c4"], shape: "star", speed: 5 });
+                const c = center(b); burst(c.x, c.y, { n: 30, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 5 });
                 nextOverlay();
             });
             row.appendChild(b);
@@ -704,7 +785,7 @@
         const row = h("div", "g-relic-pick");
         for (const id of shuffle(Math.random, left).slice(0, 2)) {
             const b = relicEl(id);
-            b.addEventListener("click", () => { run.relics.push(id); saveRun(); sfx("coin"); renderHud(); nextOverlay(); });
+            b.addEventListener("click", () => { run.relics.push(id); saveRun(); sfx("relic"); say(line("relic_1")); renderHud(); nextOverlay(); });
             row.appendChild(b);
         }
         body.append(h("p", "g-lore", "Relics stay with you until this tale ends."), row);
@@ -716,42 +797,43 @@
         const row = h("div", "g-big-row");
         for (const c of plain) {
             const b = bigCard(c.id, true, "Sharpen");
-            b.addEventListener("click", () => { c.up = true; saveRun(); sfx("level"); nextOverlay(); });
+            b.addEventListener("click", () => { c.up = true; saveRun(); sfx("upgrade"); nextOverlay(); });
             row.appendChild(b);
         }
         body.append(h("p", "g-lore", plain.length ? "Sharpen one card (+50%), or sit by the fire for a while." : "All your cards are sharp. Sit by the fire for a while."), row);
         panel({ kicker: "Campfire", title: "Rest under the trees", body, actions: [{ label: "Rest (+30 XP)", onClick: () => grant(30, homeBtn) }] });
-        say(line("camp"));
+        moodOverride = "camp"; mood();
+        say(line("camp_1"));
     }
     function shopOverlay() {
         const prices = { card: 12, relic: 35, remove: 15 };
         const stock = { cards: rewardChoices(Math.random, level(), 3), relic: shuffle(Math.random, Object.keys(RELICS).filter(id => !run.relics.includes(id)))[0] || null, removed: false };
         const draw = () => {
             const body = h("div", "g-body");
-            body.appendChild(h("p", "g-lore", `You carry ✧${run.scrap} Moonshards.`));
+            body.appendChild(h("p", "g-lore", `You carry ${run.scrap} moonshards.`));
             const row = h("div", "g-big-row");
             stock.cards.forEach((id, i) => {
                 if (!id) return;
-                const b = bigCard(id, false, `✧${prices.card}`);
+                const b = bigCard(id, false, `${prices.card} shards`);
                 b.disabled = run.scrap < prices.card;
-                b.addEventListener("click", () => { run.scrap -= prices.card; addCard(run, id, false); stock.cards[i] = null; saveRun(); sfx("coin"); draw(); });
+                b.addEventListener("click", () => { run.scrap -= prices.card; addCard(run, id, false); stock.cards[i] = null; saveRun(); sfx("purchase"); draw(); });
                 row.appendChild(b);
             });
             body.appendChild(row);
             if (stock.relic) {
-                const r = relicEl(stock.relic, `✧${prices.relic}`);
+                const r = relicEl(stock.relic, `${prices.relic} shards`);
                 r.disabled = run.scrap < prices.relic;
-                r.addEventListener("click", () => { run.scrap -= prices.relic; run.relics.push(stock.relic); stock.relic = null; saveRun(); sfx("coin"); draw(); });
+                r.addEventListener("click", () => { run.scrap -= prices.relic; run.relics.push(stock.relic); stock.relic = null; saveRun(); sfx("relic"); say(line("relic_1")); draw(); });
                 body.appendChild(r);
             }
             if (!stock.removed && run.deck.length > 3) {
-                body.appendChild(h("h3", "g-h3", `Burn a card from your deck (✧${prices.remove})`));
+                body.appendChild(h("h3", "g-h3", `Burn a card from your deck (${prices.remove} shards)`));
                 const rm = h("div", "g-chip-row");
                 for (const c of run.deck) {
-                    const b = h("button", "g-chip-btn", `${CARDS[c.id].icon} ${CARDS[c.id].name}${c.up ? "+" : ""}`);
+                    const b = h("button", "g-chip-btn", `${CARDS[c.id].name}${c.up ? "+" : ""}`);
                     b.type = "button";
                     b.disabled = run.scrap < prices.remove;
-                    b.addEventListener("click", () => { run.scrap -= prices.remove; removeCard(run, c.uid); stock.removed = true; saveRun(); sfx("defeat"); draw(); });
+                    b.addEventListener("click", () => { run.scrap -= prices.remove; removeCard(run, c.uid); stock.removed = true; saveRun(); sfx("burn"); say(line("burn_1")); draw(); });
                     rm.appendChild(b);
                 }
                 body.appendChild(rm);
@@ -760,22 +842,23 @@
             panel({ kicker: "Wandering trader", title: "Wares by lantern light", body, wide: true, actions: [{ label: "Leave", primary: true, onClick: () => renderHud() }] });
         };
         draw();
-        say(line("shop"));
+        say(line("shop_1"));
     }
-    function cacheOverlay() { relicOverlay("Forgotten cache", "Something glints in the moss"); say(line("cache")); }
+    function cacheOverlay() { relicOverlay("Forgotten cache", "Something glints in the moss"); say(line("cache_1")); }
     function eventOverlay(type) { (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : cacheOverlay)(); }
     function summaryOverlay() {
         const L = levelOf(meta.xp);
         const foes = Object.keys(run.defeated).length;
         const body = h("div", "g-body");
         const dl = h("dl", "g-stats");
-        for (const [k, v] of [["Foes vanquished", foes], ["XP earned", run.xp], ["Deck", `${run.deck.length} cards`], ["Relics", run.relics.map(id => RELICS[id].icon).join(" ") || "none"], ["Rank", `Lv ${L.level} ${rankOf(L.level)}`]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
-        const text = line("end", { pack: ctx.pack.title || "tonight", foes, xp: run.xp });
+        for (const [k, v] of [["Foes vanquished", foes], ["XP earned", run.xp], ["Deck", `${run.deck.length} cards`], ["Relics", run.relics.map(id => RELICS[id].name).join(", ") || "none"], ["Rank", `Lv ${L.level} ${rankOf(L.level)}`]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
+        const spoken = line("end");
+        const text = spoken.en;
         body.append(h("p", "g-lore", text), dl);
         panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body, actions: [{ label: "Onward", primary: true }] });
-        say(text);
+        say(spoken, true);
         sfx("victory");
-        if (!reduce) for (let i = 0; i < 4; i++) setTimeout(() => burst(root.innerWidth * (0.2 + Math.random() * 0.6), root.innerHeight * 0.3, { n: 40, colors: ["#e9c46a", "#f8f1d8", "#b9a8ff"], shape: "star", speed: 6 }), i * 250);
+        if (!reduce) for (let i = 0; i < 4; i++) setTimeout(() => burst(root.innerWidth * (0.2 + Math.random() * 0.6), root.innerHeight * 0.3, { n: 40, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 6 }), i * 250);
     }
     function profileOverlay() {
         const L = levelOf(meta.xp);
@@ -800,7 +883,18 @@
         toggle("on", "Pale Moon game mode");
         toggle("music", "Music");
         toggle("sfx", "Sound effects");
-        toggle("voice", "Narrator voice");
+        toggle("voice", "Narrator voice (Yui)");
+        const sl = h("label", "g-opt g-vol");
+        const sel = h("select", "g-select");
+        for (const [v, t] of [["ja", "Japanese, tap for English"], ["en", "English, tap for Japanese"], ["off", "Off"]]) {
+            const o = h("option", "", t);
+            o.value = v;
+            o.selected = meta.subs === v;
+            sel.appendChild(o);
+        }
+        sel.addEventListener("change", () => { meta.subs = sel.value; saveMeta(); say(line("welcome_back"), true); });
+        sl.append(h("span", "", "Subtitles"), sel);
+        opts.appendChild(sl);
         toggle("mute", "Mute everything");
         const slider = (key, label, onSet) => {
             const vl = h("label", "g-opt g-vol");
@@ -820,7 +914,7 @@
         const grid = h("div", "g-collection");
         for (const id of Object.keys(CARDS)) {
             const def = CARDS[id], open = def.unlock <= L.level;
-            grid.appendChild(h("div", `g-coll${open ? "" : " locked"}`, open ? `${def.icon} ${def.name}` : `🔒 Lv ${def.unlock}`));
+            grid.appendChild(h("div", `g-coll${open ? "" : " locked"}`, open ? def.name : `Unlocks at Lv ${def.unlock}`));
         }
         body.appendChild(grid);
         panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true, actions: [{ label: "Close", primary: true }] });
@@ -839,7 +933,7 @@
         const mute = $("gMute");
         mute.setAttribute("aria-pressed", String(meta.mute));
         mute.setAttribute("aria-label", meta.mute ? "Turn sound on" : "Mute all sound");
-        if (!meta.on || meta.mute) { try { root.speechSynthesis && root.speechSynthesis.cancel(); } catch (_) { /* fine */ } }
+        if (!meta.on || meta.mute) { if (A.voiceNow) { try { A.voiceNow.src.stop(); } catch (_) { /* done */ } } A.speaking = null; A.voiceNow = null; sub.hidden = true; levels(); }
         if (!meta.on) { setMood(null); sub.hidden = true; }
         else mood();
         renderHud();
@@ -847,14 +941,16 @@
 
     function levelUp(lvl) {
         sfx("level");
-        const unlocked = Object.keys(CARDS).filter(id => CARDS[id].unlock === lvl).map(id => `${CARDS[id].icon} ${CARDS[id].name}`);
+        const unlocked = Object.keys(CARDS).filter(id => CARDS[id].unlock === lvl).map(id => CARDS[id].name);
         const banner = h("div", "g-banner");
         banner.setAttribute("aria-hidden", "true");
-        banner.append(h("div", "g-rays"), h("b", "", `LEVEL ${lvl}`), h("span", "", unlocked.length ? `New card: ${unlocked.join(", ")}` : rankOf(lvl)));
+        const plate = h("div", "g-banner-plate");
+        plate.append(h("b", "", `Level ${lvl}`), h("span", "", unlocked.length ? `New card: ${unlocked.join(", ")}` : rankOf(lvl)));
+        banner.appendChild(plate);
         document.body.appendChild(banner);
         setTimeout(() => banner.remove(), 2600);
-        burst(root.innerWidth / 2, root.innerHeight * 0.4, { n: 70, colors: ["#e9c46a", "#fff3c4", "#b9a8ff"], shape: "star", speed: 7 });
-        say(line("level", { lvl, rank: rankOf(lvl) }));
+        burst(root.innerWidth / 2, root.innerHeight * 0.4, { n: 70, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 7 });
+        say(line(unlocked.length ? "unlock_1" : "level"), true);
     }
     function grant(xp, anchor) {
         if (!xp || !run) return;
@@ -905,21 +1001,25 @@
             f.style.transform = `translate(${to.x - r.left - r.width / 2}px, ${to.y - r.top - r.height / 2}px) scale(.5) rotate(-8deg)`;
             f.style.opacity = "0";
         });
-        setTimeout(() => { f.remove(); burst(to.x, to.y, { n: 22, colors: crit ? ["#ff4d6d", "#ffd166"] : ["#e9c46a", "#fff3c4"], shape: "star", speed: 4 }); }, 420);
-        if (crit) setTimeout(() => floatAt(portraitEl, "CRIT!", "g-f-crit"), 430);
+        setTimeout(() => { f.remove(); burst(to.x, to.y, { n: 22, colors: crit ? ["#b4562f", "#e6dcc6"] : ["#e0a243", "#e6dcc6"], speed: 4 }); }, 420);
+        if (crit) { setTimeout(() => floatAt(portraitEl, "CRIT!", "g-f-crit"), 430); say(line("crit_1")); }
+        else if (Math.random() < 0.12) say(line("card"));
     }
     function strikeFx(color) {
         const c = center(portraitEl);
-        if (!reduce) {
-            restartClass(portraitEl, "g-hurt", 420);
-            restartClass(hud, "g-shake", 320);
-        }
-        burst(c.x, c.y, { n: 26, colors: [color, "#ffffff", "#ffe8a3"], speed: 6, gravity: 0.15 });
         floatAt(portraitEl, "−1", "g-f-dmg");
+        if (reduce) return;
+        portraitEl.classList.add("g-blanch");
+        setTimeout(() => {
+            portraitEl.classList.remove("g-blanch");
+            restartClass(portraitEl, "g-hurt", 300);
+            restartClass(hud, "g-shake", 200);
+            burst(c.x, c.y, { n: 22, colors: [color, "#e6dcc6", "#9aa3a8"], speed: 6 });
+        }, 60);
     }
     function startFoe(group) {
         const gid = String(group.groupId);
-        if (run.foe && run.foe !== gid && run.lastAction === "later" && !run.defeated[run.foe] && groupById(run.foe)) say(`${foeName(run.foe)} slinks back into the shadows. It will wait for you.`);
+        if (run.foe && run.foe !== gid && run.lastAction === "later" && !run.defeated[run.foe] && groupById(run.foe)) say(line("retreat_1"));
         run.foe = gid;
         run.momentum = run.relics.includes("lamp") ? 2 : 0;
         run.played = 0;
@@ -929,11 +1029,10 @@
         if (!run.met[gid]) {
             run.met[gid] = 1;
             const type = nodeType(gid);
-            const o = { foe: foeName(gid), pack: ctx.pack.title || "tonight's pack" };
-            if (type === "boss") say(line("boss", o));
-            else if (type === "elite") say(line("elite", o));
-            else if (Math.random() < 0.3) say(line("foe", o));
-            setTimeout(() => sfx("foe"), 120);
+            if (type === "boss") say(line("boss"), true);
+            else if (type === "elite") say(line("elite"));
+            else if (Math.random() < 0.3) say(line("foe"));
+            setTimeout(() => sfx(type === "boss" ? "boss" : type === "elite" ? "elite" : "foe"), 120);
         } else sfx("draw");
         saveRun();
     }
@@ -959,6 +1058,7 @@
         }
         renderHud();
         mood();
+        if (greet) { greet = false; say(line("welcome_back")); }
     }
     function defeat(group) {
         const gid = String(group.groupId);
@@ -977,9 +1077,9 @@
         setTimeout(() => sfx("victory"), 250);
         const c = center(portraitEl);
         portraitEl.classList.add("g-dead");
-        burst(c.x, c.y, { n: 60, colors: ["#b9a8ff", "#f8f1d8", "#6b5bd6", "#e9c46a"], speed: 6, gravity: -0.03, shape: "dot", life: 60 });
-        burst(c.x, c.y, { n: 14, colors: ["#e9c46a"], speed: 5, gravity: 0.25, shape: "star", lift: 3 });
-        if (type === "boss" || type === "elite" || Math.random() < 0.4) say(line("defeat", { foe: foeName(gid) }));
+        burst(c.x, c.y, { n: 60, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 6, gravity: -0.03, shape: "dot", life: 60 });
+        burst(c.x, c.y, { n: 14, colors: ["#e6dcc6", "#9aa3a8", "#2f4f57", "#e0a243"], speed: 5, gravity: 0.25, lift: 3 });
+        if (type === "boss" || type === "elite" || Math.random() < 0.4) say(line("defeat"));
         const route = nodes();
         const next = route[route.findIndex(x => x.groupId === gid) + 1];
         setTimeout(() => {
@@ -994,6 +1094,7 @@
         ctx = e.detail;
         const saved = store.get(runKey(ctx.pack.packId), null);
         run = saved && Array.isArray(saved.deck) ? saved : newRun(ctx.pack.packId, hash(ctx.pack.packId));
+        greet = Boolean(saved && saved.introduced && !saved.done);
         if (!saved) saveRun();
         item = null;
         portraitEl.dataset.gid = "";
@@ -1013,12 +1114,13 @@
             run.lastAction = "later";
             saveRun();
             sfx("later");
+            if (Math.random() < 0.3) say(line("later_1"));
             floatAt(portraitEl, "Set aside", "g-f-muted");
             return;
         }
         run.lastAction = "verdict";
-        const action = Object.values(ctx.actions).find(a => a.id === actionId);
-        strikeFx((action && action.color) || "#ffffff");
+        const STRIKE = { right: "#6f7d5a", left: "#4f7a84", up: "#b4562f", down: "#9aa3a8" };
+        strikeFx(STRIKE[V.directionOf(ctx.actions, actionId)] || "#e6dcc6");
         sfx("hit");
         meta.verdicts++;
         if (!run.scored[card.key]) {
@@ -1026,6 +1128,7 @@
             run.scored[card.key] = 1;
             const t = { seen: item && item.key === card.key ? item.seen.size : 0, total: card.photos.length, firstOfFoe: run.first,
                 wasLater: Boolean(run.later[card.key]), momentum: run.momentum, played: run.played };
+            if (t.wasLater) say(line("revisit_1"));
             run.first = false;
             const mult = run.momentum;
             const xp = withMomentum(BASE_XP + trigger("verdict", t), mult);
@@ -1038,6 +1141,7 @@
     document.addEventListener("vinder:undo", () => {
         if (!meta.on || !run) return;
         sfx("undo");
+        if (Math.random() < 0.25) say(line("undo_1"));
         if (!reduce) restartClass(portraitEl, "g-heal", 600);
     });
     function fireAction(kind) {
@@ -1059,9 +1163,9 @@
     document.addEventListener("vinder:details", () => fireAction("details"));
     document.addEventListener("vinder:check", () => fireAction("check"));
     document.addEventListener("vinder:ai", () => fireAction("ai"));
-    document.addEventListener("vinder:send", () => { if (meta.on) { say(line("send")); sfx("victory"); } });
+    document.addEventListener("vinder:send", () => { if (meta.on) { say(line("send_1"), true); sfx("send"); } });
 
-    $("gStrip").addEventListener("click", () => { if (ctx) { sfx("ui"); enqueue(mapOverlay); } });
+    $("gStrip").addEventListener("click", () => { if (ctx) { sfx("map"); enqueue(mapOverlay); } });
     $("gMe").addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
     $("gMute").addEventListener("click", () => { meta.mute = !meta.mute; saveMeta(); apply(); sfx("ui"); });
     // Browsers only start sound after a tap; any tap brings the music back.
@@ -1069,7 +1173,7 @@
     document.addEventListener("visibilitychange", () => {
         if (document.hidden) {
             setMood(null);
-            try { root.speechSynthesis && root.speechSynthesis.cancel(); } catch (_) { /* fine */ }
+            if (A.voiceNow) { try { A.voiceNow.src.stop(); } catch (_) { /* done */ } } A.speaking = null; A.voiceNow = null; sub.hidden = true; levels();
             if (A.ctx) A.ctx.suspend().catch(() => {});
         } else mood();
     });
