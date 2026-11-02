@@ -236,3 +236,20 @@ button { font: inherit; color: inherit; }
 .move-opt small { font-size: 13px; font-weight: 500; color: var(--text-muted); }
 .move-opt.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .chip.moved { background: rgba(255, 214, 10, .92); color: #111827; }
+
+.chip.check { background: rgba(255, 214, 10, .92); color: #111827; }
+.field-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--border); border-radius: 14px; margin-bottom: 8px; background: var(--bg); }
+.field-row.checked { border-color: var(--within); }
+.field-pic { flex: none; width: 96px; height: 64px; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; cursor: zoom-in; }
+.field-pic img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.field-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.field-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.field-label { font-size: 13.5px; font-weight: 650; color: var(--text-muted); }
+.field-status { flex: none; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--border); color: var(--text); }
+.field-status.check { background: #fde68a; color: #713f12; }
+.field-status.ok { background: #dbeafe; color: #1e3a8a; }
+.field-status.done, .field-status.checked { background: #dcfce7; color: #14532d; }
+.field-line { display: flex; gap: 8px; }
+.field-input { flex: 1; min-width: 0; min-height: 44px; border-radius: 10px; border: 1.5px solid var(--border-input); background: var(--surface); color: var(--text); font: inherit; font-size: 16px; padding: 0 10px; }
+.field-ok { border-color: var(--border-input); background: transparent; color: var(--text); }
+.field-note { color: var(--text-muted); font-size: 12.5px; }

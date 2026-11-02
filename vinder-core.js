@@ -127,7 +127,20 @@
     const moveOf = (moves, groupId, photoId) => (moves && moves[moveKey(groupId, photoId)]) || null;
     const movesList = moves => Object.values(moves || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
 
-    function decisionsFile(pack, cards, decisions, at, moves) {
+    const fieldKey = (groupId, fieldId) => `${groupId}|${fieldId}`;
+    function setFieldCheck(checks, { groupId, fieldId, value, at }) {
+        const next = { ...checks };
+        const key = fieldKey(groupId, fieldId);
+        if (value === undefined || value === null) delete next[key];
+        else next[key] = { groupId: String(groupId), fieldId: String(fieldId), value: String(value).trim(), at: at || new Date().toISOString() };
+        return next;
+    }
+    const fieldCheckOf = (checks, groupId, fieldId) => (checks && checks[fieldKey(groupId, fieldId)]) || null;
+    const fieldChecksList = checks => Object.values(checks || {}).sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    const fieldsToCheck = (group, checks) => (Array.isArray(group && group.fields) ? group.fields : [])
+        .filter(f => f && f.status === "check" && !fieldCheckOf(checks, group.groupId, f.id));
+
+    function decisionsFile(pack, cards, decisions, at, moves, checks) {
         return {
             app: "VINder",
             kind: "decisions",
@@ -140,11 +153,12 @@
                 action: decisions[c.key].action,
                 decidedAt: decisions[c.key].decidedAt
             })),
-            moves: movesList(moves).map(m => ({ groupId: m.groupId, photoId: m.photoId, from: m.from, to: m.to, movedAt: m.at }))
+            moves: movesList(moves).map(m => ({ groupId: m.groupId, photoId: m.photoId, from: m.from, to: m.to, movedAt: m.at })),
+            fields: fieldChecksList(checks).map(f => ({ groupId: f.groupId, fieldId: f.fieldId, value: f.value, checkedAt: f.at }))
         };
     }
 
-    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, moveKey, setMove, moveOf, movesList };
+    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck };
     root.VINderCore = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
