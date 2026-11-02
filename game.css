@@ -533,3 +533,16 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 .g-mini.locked small { color: var(--fog); }
 .g-explain { position: fixed; z-index: 80; max-width: min(300px, 86vw); padding: 10px 12px; border-radius: 8px; background: var(--bone); color: var(--night);
     box-shadow: 0 3px 0 var(--bone-deep); font: 600 13px/1.4 var(--g-text); pointer-events: none; animation: g-draw .2s var(--g-in); }
+
+/* ---------- round 5: wager, acts, boss phase ---------- */
+.g-wager { position: absolute; z-index: 2; left: 8px; top: 40px; min-height: 30px; padding: 0 10px; border: 0; border-radius: 999px; cursor: pointer;
+    background: var(--amber); color: var(--night); font: 800 11.5px/1 var(--g-text); box-shadow: 0 2px 0 var(--amber-deep); }
+.g-wager[hidden] { display: none; }
+.g-wager.on { background: var(--night); color: var(--amber); box-shadow: inset 0 0 0 2px var(--amber); }
+.g-wager.lost { background: var(--night); color: var(--fog); box-shadow: none; }
+.g-hud.g-act2 .g-scene { background-image: url("assets/bg/battle2.webp"); }
+.g-hud.g-act3 .g-scene { background-image: url("assets/bg/battle3.webp"); }
+.g-hud.g-act4 .g-scene { background-image: url("assets/bg/battle4.webp"); }
+.g-hud.g-act5 .g-scene { background-image: url("assets/bg/battle5.webp"); }
+.g-phase img, .g-phase .g-face { animation: g-phase .9s ease-out; }
+@keyframes g-phase { 0% { filter: brightness(2.6) saturate(0); transform: scale(1.12); } 30% { transform: translateX(-8px) scale(1.06); } 60% { transform: translateX(6px); } }

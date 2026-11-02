@@ -69,4 +69,15 @@ assert.ok(G.LANTERNS.amber.need({ xp: 0 }) && !G.LANTERNS.rose.need({ xp: 0 }));
 assert.ok(["zoom", "details", "every"].includes(G.bountyOf("g#1", 3)));
 assert.ok(Array.from({ length: 20 }, (_, i) => G.bountyOf(`k${i}`, 1)).every(b => b !== "every"));
 assert.ok(Object.keys(G.CARDS).every(id => G.FLAVOR[id]));
+// Long packs split into acts (max 5), each ending in its own boss; paths finish an act first.
+const mk = n => { const a = []; for (let g = 0; g < n; g++) for (let i = 0; i < 2; i++) a.push(card(`b${g}`, i)); return G.buildMap(a); };
+const r2 = mk(10);
+assert.deepStrictEqual(r2.filter(n => n.type === "boss").map(n => [n.groupId, n.act]), [["b4", 1], ["b9", 2]]);
+assert.ok(G.pathChoices(r2, () => true, 9).every(n => n.act === 1 && n.type !== "boss"));
+assert.deepStrictEqual(G.pathChoices(r2, gid => gid === "b4" || gid === "b5", 3).map(n => n.groupId), ["b4"]);
+assert.deepStrictEqual(mk(20).filter(n => n.type === "boss").map(n => n.act), [1, 2, 3, 4, 5]);
+assert.strictEqual(Math.max(...mk(40).map(n => n.act)), 5);
+assert.strictEqual(mk(6).filter(n => n.type === "boss").length, 1);
+assert.strictEqual(G.speciesOf("x", "boss", 2).id, "lamplighter");
+assert.ok(G.REGIONS[4].species.some(([id]) => id === G.speciesOf("x", "foe", 5).id));
 console.log("game rules ok");

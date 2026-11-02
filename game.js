@@ -53,7 +53,13 @@
         deep: { name: "Deep Scan", on: "verdict", test: t => t.seen >= 4, xp: 30, text: "Verdict after seeing 4+ photos", unlock: 5 },
         echo: { name: "Echo", on: "play", cost: 2, text: "Fire the last card again", unlock: 5 },
         fullmoon: { name: "Full Moon", on: "defeat", xp: 10, light: 3, text: "Vanquish a foe", unlock: 6 },
-        bind: { name: "Binding Rite", on: "play", cost: 3, text: "Strip this foe of its trait", unlock: 6 }
+        bind: { name: "Binding Rite", on: "play", cost: 3, text: "Strip this foe of its trait", unlock: 6 },
+        kindling: { name: "Kindling", on: "active", xp: 8, text: "Whenever you play an active card", unlock: 2 },
+        purge: { name: "Purge", on: "play", cost: 1, text: "Burn another card in your hand for 10 shards", unlock: 2 },
+        afterglow: { name: "Afterglow", on: "verdict", test: t => t.light >= 5, xp: 15, text: "Verdict while holding 5+ Light", unlock: 3 },
+        chain: { name: "Chain of Sight", on: "verdict", test: t => t.photoFired >= 2, xp: 20, text: "Verdict after 2+ photo cards fired on this foe", unlock: 3 },
+        forge: { name: "Forge", on: "play", cost: 2, text: "Turn another card in your hand into a rare one", unlock: 4 },
+        overflow: { name: "Overflow", on: "overflow", xp: 12, text: "Earn Light while your lantern is already full", unlock: 5 }
     };
     const PHOTO_CARDS = new Set(["gaze", "panorama", "deep", "loupe"]);
     const INK_CARDS = new Set(["ledger", "notes", "inktrail"]);
@@ -79,7 +85,13 @@
         thimble: { name: "Silver Thimble", text: "Active cards cost 1 less (never below 1)" },
         seal: { name: "Wax Seal", text: "Your first active card on each foe is free" },
         moth: { name: "Moth Lamp", text: "Hold up to 15 Light instead of 10" },
-        compass: { name: "Cracked Compass", text: "See one more path when you choose your road" }
+        compass: { name: "Cracked Compass", text: "See one more path when you choose your road" },
+        kiln: { name: "Ember Kiln", text: "Playing a 3+ cost card gives 10 XP" },
+        mirror: { name: "Silver Mirror", text: "The first card that fires on each foe counts twice" },
+        bell: { name: "Night Bell", text: "Claiming a bounty gives 2 Light" },
+        scale: { name: "Merchant's Scale", text: "The trader charges 25% less" },
+        map: { name: "Inked Map", text: "Elites offer 4 cards instead of 3" },
+        quill: { name: "Raven Quill", text: "Ink cards also give 1 Light" }
     };
     // Every foe carries one trait. Traits change rewards and how cards play out, never what a verdict does.
     const TRAITS = {
@@ -140,20 +152,41 @@
         const gs = groupsOf(cards);
         const avg = gs.reduce((n, g) => n + g.count, 0) / (gs.length || 1);
         const nodes = [];
+        const acts = gs.length >= 8 ? Math.min(5, Math.floor(gs.length / 4)) : 1;
+        const size = Math.ceil(gs.length / acts);
         gs.forEach((g, i) => {
             const gr = g.group;
+            const act = Math.min(acts, Math.floor(i / size) + 1);
+            const last = i === gs.length - 1 || (i + 1) % size === 0;
             const blocked = (Array.isArray(gr.gates) && gr.gates.some(x => x && x.level === "block")) || Boolean(gr.flag && gr.flag.tone === "block");
-            const type = i === gs.length - 1 ? "boss" : (blocked || (g.count >= 4 && g.count >= avg * 1.6)) ? "elite" : "foe";
-            nodes.push({ type, groupId: String(gr.groupId), count: g.count });
+            const type = last ? "boss" : (blocked || (g.count >= 4 && g.count >= avg * 1.6)) ? "elite" : "foe";
+            nodes.push({ type, groupId: String(gr.groupId), count: g.count, act });
         });
         return nodes;
     }
 
     let uidSeq = 0;
     const inst = (id, up) => ({ uid: `c${Date.now().toString(36)}${(uidSeq++).toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`, id, up: Boolean(up) });
-    function speciesOf(gid, type) {
-        if (type === "boss") return { id: "sovereign", name: "The Pale Sovereign" };
-        const [id, name] = SPECIES[hash(`${gid}|species`) % SPECIES.length];
+    // Five regions. Long packs walk through them in order; each act ends with its own boss.
+    const REGIONS = [
+        { name: "The Moon Road", species: SPECIES, boss: ["sovereign", "The Pale Sovereign"], lore: "" },
+        { name: "The Drowned Yard", boss: ["lamplighter", "The Hollow Lamplighter"], lore: "Past the Sovereign's gate the road sinks into the sea. Cars stand half-drowned under a lighthouse that has not turned in years.",
+            species: [["rainwight", "Rainwight"], ["saltgnawer", "Salt Gnawer"], ["puddlejack", "Puddlejack"], ["fogmoth", "Fogmoth"], ["hingehound", "Hinge Hound"], ["wiperwraith", "Wiper Wraith"],
+                ["paintleech", "Paint Leech"], ["lampmite", "Lamp Mite"], ["rivetrook", "Rivet Rook"], ["chromeeel", "Chrome Eel"], ["bumpertoad", "Bumper Toad"], ["mirrorimp", "Mirror Imp"]] },
+        { name: "The Rust Orchard", boss: ["thornregent", "The Thorn Regent"], lore: "Inland, trees grow out of old chassis. Their leaves are flakes of rust, and they rattle when nothing moves.",
+            species: [["burrthorn", "Burr Thorn"], ["oxidrake", "Oxidrake"], ["rustwren", "Rust Wren"], ["flakefox", "Flake Fox"], ["corrodile", "Corrodile"], ["boltworm", "Bolt Worm"],
+                ["scabbeetle", "Scab Beetle"], ["tarnishhare", "Tarnish Hare"], ["ironmoth", "Iron Moth"], ["pitlark", "Pit Lark"], ["sapwraith", "Sap Wraith"], ["husklurk", "Husk Lurker"]] },
+        { name: "The Glass Market", boss: ["mirrorqueen", "The Mirror Queen"], lore: "A night market of windscreens and mirrors. Every stall shows you a little more than you asked to see.",
+            species: [["shardling", "Shardling"], ["prismcat", "Prism Cat"], ["glarehawk", "Glare Hawk"], ["crazeling", "Crazeling"], ["lenslug", "Lens Slug"], ["splintermouse", "Splinter Mouse"],
+                ["glintfish", "Glint Fish"], ["frostpane", "Frost Pane"], ["chipjay", "Chip Jay"], ["webcrack", "Web Crack"], ["bevelbat", "Bevel Bat"], ["hazeowl", "Haze Owl"]] },
+        { name: "The Moonless Depot", boss: ["moonless", "The Moonless King"], lore: "At the end of the road the moon goes out. Only your lantern is left, and the depot where every Defect was born.",
+            species: [["dimwisp", "Dim Wisp"], ["gloomhound", "Gloom Hound"], ["nullmoth", "Null Moth"], ["hushcrow", "Hush Crow"], ["voidtoad", "Void Toad"], ["shadeling", "Shadeling"],
+                ["blankface", "Blank Face"], ["duskeel", "Dusk Eel"], ["murkmole", "Murk Mole"], ["sootimp", "Soot Imp"], ["lullspider", "Lull Spider"], ["nightjar", "Nightjar"]] }
+    ];
+    function speciesOf(gid, type, act) {
+        const R = REGIONS[(act || 1) - 1] || REGIONS[0];
+        if (type === "boss") return { id: R.boss[0], name: R.boss[1] };
+        const [id, name] = R.species[hash(`${gid}|species`) % R.species.length];
         return { id, name: type === "elite" ? `Elder ${name}` : name };
     }
     function newRun(packId, seed, hero) {
@@ -193,8 +226,12 @@
     // Paths you may take next: groups still to finish, in route order; the boss only when it is all that is left.
     function pathChoices(route, isOpen, n) {
         const open = route.filter(x => isOpen(x.groupId));
-        const nonBoss = open.filter(x => x.type !== "boss");
-        return (nonBoss.length ? nonBoss : open).slice(0, n);
+        if (!open.length) return [];
+        // Finish an act before the next one; its boss comes last.
+        const act = Math.min(...open.map(x => x.act || 1));
+        const inAct = open.filter(x => (x.act || 1) === act);
+        const nonBoss = inAct.filter(x => x.type !== "boss");
+        return (nonBoss.length ? nonBoss : inAct).slice(0, n);
     }
 
     // One omen per calendar day, the same for everyone that day; applies to tales started that day.
@@ -258,9 +295,11 @@
         whet: "A dull eye is sharpened on stone and patience.", tithe: "The moon pays those who keep its road.", oracle: "Ask, and a second sight opens.",
         inktrail: "The ink glows where the truth was written.", insight: "Stillness, then the perfect moment.", rally: "One drum, and the whole road answers.",
         surge: "The moon pulls hard, just once.", deep: "Four photos deep, nothing hides.", echo: "What worked once, works again.",
-        fullmoon: "A whole moon of light, all for you.", bind: "Rope, a knot, and a quiet word."
+        fullmoon: "A whole moon of light, all for you.", bind: "Rope, a knot, and a quiet word.",
+        kindling: "Every spark feeds the next.", purge: "Less to carry, more to see.", afterglow: "The light lingers on the careful.",
+        chain: "One look leads to the next.", forge: "Hammer the plain into the rare.", overflow: "A full lantern still spills light."
     };
-    const rules = { BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    const rules = { REGIONS, BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -297,7 +336,7 @@
         return (pref && q.find(c => String(c.group.groupId) === pref)) || q[0] || null;
     }
     const groupOpen = gid => ctx.cards.some(c => String(c.group.groupId) === String(gid) && !V.isDecided(ctx.actions, ctx.decisions[c.key]));
-    const traitHere = gid => (run && run.bound === String(gid) ? null : traitOf(gid));
+    const traitHere = gid => (run && run.bound === String(gid) ? null : run && run.phased && run.phased[String(gid)] ? "armored" : traitOf(gid));
     function prefer(gid) {
         run.pref = gid ? String(gid) : null;
         saveRun();
@@ -311,7 +350,9 @@
     const nodeType = gid => (nodes().find(n => n.groupId === String(gid)) || { type: "foe" }).type;
     const groupById = gid => { const c = ctx && ctx.cards.find(x => String(x.group.groupId) === String(gid)); return c ? c.group : null; };
 
-    const foeName = gid => speciesOf(gid, nodeType(gid)).name;
+    const actOf = gid => (nodes().find(n => n.groupId === String(gid)) || {}).act || 1;
+    const speciesAt = (gid, type) => speciesOf(gid, type, actOf(gid));
+    const foeName = gid => speciesAt(gid, nodeType(gid)).name;
     const capOf = () => lightCap(run.relics) + (run.omen === "wick" ? 3 : 0);
     function costNow(c) {
         const base = costOf(c.id, c.up, run.relics, run.sealUsed !== run.foe);
@@ -598,6 +639,7 @@
                 <div class="g-life" role="meter" aria-label="Left to decide on this foe" id="gHp" data-explain="One segment per item still to decide on this foe. Every verdict removes one, whichever verdict it is."></div>
             </div>
             <div class="g-bounty" id="gBounty" hidden></div>
+            <button type="button" class="g-wager" id="gWager" hidden></button>
         </div>`;
     // Dock above the verdict buttons: hero, hand, resources.
     const dock = h("div", "g-dock");
@@ -856,7 +898,7 @@
         }
         const gid = String(top.group.groupId), type = nodeType(gid);
         if (portraitEl.dataset.gid !== gid) {
-            const sp = speciesOf(gid, type);
+            const sp = speciesAt(gid, type);
             portraitEl.dataset.gid = gid;
             portraitEl.className = `g-portrait g-${type}`;
             portraitEl.innerHTML = portraitSvg(gid, type);
@@ -876,6 +918,9 @@
         renderLife(gid, ctx.cards.filter(c => String(c.group.groupId) === gid));
         renderHand();
         renderBounty();
+        renderWager();
+        const act = actOf(gid);
+        for (let a = 2; a <= 5; a++) hud.classList.toggle(`g-act${a}`, act === a);
     }
 
     // ---------- overlays, shown one at a time ----------
@@ -1017,7 +1062,7 @@
     }
     function rewardOverlay(gid) {
         const body = h("div", "g-body");
-        const choices = rewardChoices(Math.random, level(), 3);
+        const choices = rewardChoices(Math.random, level(), nodeType(gid) === "elite" && run.relics.includes("map") ? 4 : 3);
         const row = h("div", "g-big-row");
         for (const id of choices) {
             const b = bigCard(id, false);
@@ -1059,7 +1104,8 @@
         say(line("camp_1"));
     }
     function shopOverlay() {
-        const prices = { card: 12, relic: 35, remove: 15 };
+        const off = run.relics.includes("scale") ? 0.75 : 1;
+        const prices = { card: Math.round(12 * off), relic: Math.round(35 * off), remove: Math.round(15 * off) };
         const stock = { cards: rewardChoices(Math.random, level(), 3), relic: shuffle(Math.random, Object.keys(RELICS).filter(id => !run.relics.includes(id)))[0] || null, removed: false };
         const draw = () => {
             const body = h("div", "g-body");
@@ -1420,6 +1466,7 @@
         if (!item || item.paid || run.scored[item.key] || item.bounty !== kind) return;
         item.paid = true;
         if (kind === "zoom") earnLight(2);
+        if (run.relics.includes("bell")) earnLight(2);
         if (kind === "details") { run.scrap += 8; floatAt($("gScrap"), "+8 shards", "g-f-xp"); }
         if (kind === "every") grant(15, portraitEl);
         floatAt($("gBounty"), "Bounty!", "g-f-xp");
@@ -1427,6 +1474,17 @@
         haptic(HAPTIC.pick);
         renderBounty();
         saveRun();
+    }
+    function renderWager() {
+        const el = $("gWager");
+        if (!el || !run) return;
+        const w = run.wager && run.wager.gid === run.foe ? run.wager : null;
+        const canStake = !w && run.first && run.scrap >= 5 && run.foe && topCard();
+        el.hidden = !(w || canStake);
+        el.className = `g-wager${w ? (w.broken ? " lost" : " on") : ""}`;
+        el.disabled = Boolean(w);
+        el.textContent = w ? (w.broken ? "Wager lost" : `Wager ${w.stake} · look closely at every item`) : `Wager ${Math.min(10, run.scrap)} shards`;
+        el.dataset.explain = "Stake shards that you will look closely at every item on this foe (see every photo, zoom in, or read the details). Do it and win double plus 20 XP; miss once and the stake is lost. Which verdict you choose never matters.";
     }
     function renderBounty() {
         const el = $("gBounty");
@@ -1441,6 +1499,7 @@
     function earnLight(n) {
         if (!n || !run) return;
         const before = run.light;
+        if (before + n > capOf() && item && !run.scored[item.key]) { const ox = trigger("overflow", {}); if (ox) grant(ox, portraitEl); }
         run.light = Math.min(capOf(), run.light + n);
         if (run.light >= 10) award("lamp");
         if (run.light > before) {
@@ -1460,13 +1519,16 @@
             if (!c) continue;
             const def = CARDS[c.id];
             if (def.on !== kind || (def.test && !def.test(t))) continue;
-            if (kind !== "verdict" && kind !== "defeat") {
+            if (kind !== "verdict" && kind !== "defeat" && kind !== "active") {
                 if (!item || run.scored[item.key] || item.fired.has(kind)) continue;
                 item.fired.add(kind);
             }
             const g = cardGain(c.id, c.up, run.relics);
             let gx = tr === "armored" ? Math.round(g.xp * 0.75) : g.xp;
             if (run.omen === "owl" && PHOTO_CARDS.has(c.id)) gx = Math.round(gx * 1.25);
+            if (run.relics.includes("mirror") && run.mirrorUsed !== run.foe && gx) { gx *= 2; run.mirrorUsed = run.foe; }
+            if (PHOTO_CARDS.has(c.id)) run.photoFired = (run.photoFired || 0) + 1;
+            if (run.relics.includes("quill") && INK_CARDS.has(c.id)) earnLight(1);
             const chance = (run.relics.includes("bolt") ? 0.2 : 0) + (tr === "brittle" ? 0.25 : 0);
             const crit = Boolean(gx) && (run.nextCrit || Math.random() < chance);
             if (crit) { gx *= 2; run.nextCrit = false; }
@@ -1511,12 +1573,26 @@
             if (g.light) earnLight(g.light);
         } break;
         case "bind": run.bound = run.foe; floatAt(portraitEl, "Trait broken", "g-f-xp"); break;
+        case "forge": {
+            const other = shuffle(Math.random, run.hand.filter(u => u !== uid).map(cardOf).filter(x => x && CARDS[x.id].unlock <= 1));
+            const rare = Object.keys(CARDS).filter(id => CARDS[id].unlock >= 2 && CARDS[id].unlock <= Math.max(2, level()) && id !== "forge");
+            if (other[0] && rare.length) { other[0].id = pick(Math.random, rare); floatAt(portraitEl, `→ ${CARDS[other[0].id].name}`, "g-f-xp"); }
+            break;
+        }
+        case "purge": {
+            const other = run.hand.filter(u => u !== uid);
+            if (other.length) { const victim = cardOf(other[other.length - 1]); removeCard(run, victim.uid); run.scrap += 10; floatAt($("gScrap"), `Burned ${CARDS[victim.id].name} · +10`, "g-f-xp"); sfx("burn"); }
+            break;
+        }
         default: break;
         }
+        if (run.relics.includes("kiln") && (CARDS[c.id].cost || 0) >= 3) grant(10, portraitEl);
         flyCard(uid, false);
         run.hand = run.hand.filter(u => u !== uid);
         run.discard.push(uid);
         run.played++;
+        const kx = trigger("active", {});
+        if (kx) grant(kx, portraitEl);
         refillHand(run, Math.random).forEach(u => justDrawn.add(u));
         saveRun();
         renderHud();
@@ -1550,7 +1626,7 @@
         const back = () => { if (done) return; done = true; if (hurt.isConnected) hurt.replaceWith(img); };
         hurt.onerror = back;
         hurt.onload = () => { if (!done && img.isConnected) img.replaceWith(hurt); };
-        hurt.src = `${ART}foes/hurt/${speciesOf(gid, nodeType(gid)).id}.webp`;
+        hurt.src = `${ART}foes/hurt/${speciesAt(gid, nodeType(gid)).id}.webp`;
         setTimeout(back, 1700);
     }
     function strikeFx(color) {
@@ -1571,10 +1647,23 @@
         if (run.foe && run.foe !== gid && run.lastAction === "later" && !run.defeated[run.foe] && groupById(run.foe)) say(line("retreat_1"));
         run.foe = gid;
         run.played = 0;
+        run.photoFired = 0;
         earnLight((run.relics.includes("lamp") ? 2 : 0) + (run.relics.includes("owl") ? 1 : 0) + (run.omen === "clear" ? 1 : 0));
         run.first = true;
         discardHand(run);
         refillHand(run, Math.random).forEach(u => justDrawn.add(u));
+        const act = actOf(gid);
+        run.actsSeen = run.actsSeen || {};
+        if (act >= 2 && !run.actsSeen[act]) {
+            run.actsSeen[act] = 1;
+            const R = REGIONS[act - 1];
+            enqueue(() => {
+                const body = h("div", "g-body");
+                body.append(h("p", "g-lore", R.lore));
+                panel({ kicker: `Act ${["I", "II", "III", "IV", "V"][act - 1]}`, title: R.name, body, actions: [{ label: "Walk on", primary: true }] });
+                sfx("boss");
+            });
+        }
         if (!run.met[gid]) {
             run.met[gid] = 1;
             const type = nodeType(gid);
@@ -1670,10 +1759,14 @@
         xp += trigger("defeat", { played: run.played });
         let shards = 2 + (run.relics.includes("gear") ? 3 : 0) + (tr === "greedy" ? 6 : 0);
         if (run.omen === "silver") shards = Math.round(shards * 1.5);
+        if (run.wager && run.wager.gid === gid) {
+            if (!run.wager.broken) { const won = run.wager.stake * 2; shards += won; xp += 20; setTimeout(() => { floatAt($("gScrap"), `Wager won · +${won}`, "g-f-xp"); sfx("coin"); }, 500); }
+            run.wager = null;
+        }
         if (run.double === gid) { xp *= 2; shards *= 2; }
         run.scrap += shards;
         meta.foes++;
-        const sp = speciesOf(gid, type).id;
+        const sp = speciesAt(gid, type).id;
         meta.bestiary = meta.bestiary || {};
         meta.bestiary[sp] = (meta.bestiary[sp] || 0) + 1;
         award("first");
@@ -1709,7 +1802,7 @@
         const body = h("div", "g-body");
         const list = h("div", "g-paths");
         for (const o of options) {
-            const sp = speciesOf(o.groupId, o.type), tr = traitHere(o.groupId), g = groupById(o.groupId);
+            const sp = speciesAt(o.groupId, o.type), tr = traitHere(o.groupId), g = groupById(o.groupId);
             const left = ctx.cards.filter(c => String(c.group.groupId) === o.groupId && !V.isDecided(ctx.actions, ctx.decisions[c.key])).length;
             const b = h("button", `g-path g-path-${o.type}`);
             b.type = "button";
@@ -1779,14 +1872,28 @@
             run.scored[card.key] = 1;
             const mine = item && item.key === card.key ? item : null;
             const t = { seen: mine ? mine.seen.size : 0, total: card.photos.length, firstOfFoe: run.first,
-                wasLater: Boolean(run.later[card.key]), played: run.played, details: Boolean(mine && mine.lit.has("details")) };
+                wasLater: Boolean(run.later[card.key]), played: run.played, details: Boolean(mine && mine.lit.has("details")), light: run.light, photoFired: run.photoFired || 0 };
             if (t.wasLater) say(line("revisit_1"));
             run.first = false;
             // Looked closely = saw every photo (or there was only one), or zoomed, or read the details.
             run.items = (run.items || 0) + 1;
-            if (t.total <= 1 || t.seen >= t.total || (mine && (mine.lit.has("viewer") || mine.lit.has("details")))) run.close = (run.close || 0) + 1;
+            const lookedClose = t.total <= 1 || t.seen >= t.total || Boolean(mine && (mine.lit.has("viewer") || mine.lit.has("details")));
+            if (lookedClose) run.close = (run.close || 0) + 1;
+            if (run.wager && run.wager.gid === String(card.group.groupId) && !run.wager.broken && !lookedClose) {
+                run.wager.broken = true; floatAt($("gWager"), "Wager lost", "g-f-muted"); sfx("later"); haptic(HAPTIC.nope);
+            }
             if (traitHere(card.group.groupId) === "glimmer" && t.total > 1 && t.seen >= t.total) { run.scrap += 5; floatAt($("gScrap"), "+5 shards", "g-f-xp"); }
             grant(BASE_XP + trigger("verdict", t), portraitEl);
+        }
+        const bgid = String(card.group.groupId);
+        if (nodeType(bgid) === "boss" && !(run.phased && run.phased[bgid])) {
+            const mineAll = ctx.cards.filter(c => String(c.group.groupId) === bgid);
+            const left = mineAll.filter(c => !V.isDecided(ctx.actions, ctx.decisions[c.key])).length;
+            if (mineAll.length >= 2 && left > 0 && left <= mineAll.length / 2) {
+                run.phased = run.phased || {};
+                run.phased[bgid] = 1;
+                setTimeout(() => { floatAt(portraitEl, "The mask cracks!", "g-f-crit"); sfx("boss"); haptic(HAPTIC.defeat); restartClass(portraitEl, "g-phase", 900); say(line("boss_2"), true); renderHud(); }, 400);
+            }
         }
         if (V.groupDone(ctx.cards, ctx.decisions, ctx.actions, card.group.groupId)) defeat(card.group);
         saveRun(); saveMeta();
@@ -1833,6 +1940,15 @@
     $("gStrip").dataset.explain = "Your route tonight: foes, elites and the boss. Tap to open the map.";
     $("gStrip").addEventListener("click", () => { if (ctx) { sfx("map"); enqueue(mapOverlay); } });
     $("gMe").addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
+    $("gWager").addEventListener("click", () => {
+        if (!run || !run.foe || (run.wager && run.wager.gid === run.foe) || run.scrap < 5) return;
+        const stake = Math.min(10, run.scrap);
+        run.scrap -= stake;
+        run.wager = { gid: run.foe, stake, broken: false };
+        sfx("purchase"); haptic(HAPTIC.pick);
+        floatAt($("gWager"), `Staked ${stake}`, "g-f-xp");
+        saveRun(); renderMe(); renderWager();
+    });
     $("gPiles").addEventListener("click", () => { if (run) { sfx("draw"); enqueue(pilesOverlay); } });
     // Hold to explain: long-press anything with data-explain.
     let explainTimer = 0, explainEl = null;
