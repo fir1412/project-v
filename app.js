@@ -810,7 +810,7 @@
             : [{ label: "Second opinion", prompt: "Which choice would you make for this card, and why? Point to what in the photos decides it." }];
         const row = $("aiPresets");
         row.replaceChildren();
-        for (const p of presets.slice(0, 4)) {
+        for (const p of presets.slice(0, 6)) {
             const b = el("button", "viewer-pill ai-preset", String(p.label || "Ask"));
             b.type = "button";
             b.addEventListener("click", () => askAi(String(p.prompt || p.label || "")));
