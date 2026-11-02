@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 14";
+    const APP_VERSION = "2026-11-03 · Pale Moon 15";
 
     let dbPromise = null;
     function db() {

@@ -590,3 +590,5 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 @keyframes g-here { 50% { box-shadow: 0 3px 0 rgba(27, 34, 56, .35), 0 0 0 7px rgba(224, 162, 67, .45); } }
 @media (prefers-reduced-motion: reduce) { .g-map-node.here .g-map-face { animation: none; } }
 .g-map-node b, .g-map-node small, .g-map-act { text-shadow: 0 0 3px var(--bone), 0 0 6px var(--bone), 0 0 9px var(--bone); }
+body.game-on #home { overflow-x: clip; }
+.g-fam-tabs .g-chip-btn:focus:not(:focus-visible) { outline: none; }
