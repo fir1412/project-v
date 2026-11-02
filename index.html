@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0b6bcb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Swipe through photo cards and record a decision for each - offline.">
+<title>VINder</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+    <section id="home" class="screen" aria-labelledby="homeTitle">
+        <header class="brandbar">
+            <img src="icons/icon.svg" alt="" class="brand-icon" width="34" height="34">
+            <h1 id="homeTitle" class="brand-name">VINder</h1>
+        </header>
+        <div id="packs" class="packs" aria-live="polite"></div>
+        <div class="home-actions">
+            <label class="btn btn-primary btn-block" for="packFile">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14" /></svg>
+                Open a pack
+            </label>
+            <input type="file" id="packFile" accept=".json,application/json,.vinder" hidden>
+            <p class="hint">Pick a pack file from your phone's files. It stays on this phone, so you can swipe offline.</p>
+        </div>
+    </section>
+
+    <section id="deck" class="screen" hidden aria-label="Cards to decide">
+        <header class="deckbar">
+            <button type="button" class="icon-btn" id="backHome" aria-label="Back to packs">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            </button>
+            <div class="deck-progress">
+                <div class="deck-count" id="deckCount">0 / 0</div>
+                <div class="deck-meter"><span id="deckMeter"></span></div>
+            </div>
+            <button type="button" class="icon-btn" id="openReview" aria-label="All decisions">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
+            </button>
+        </header>
+        <div class="stack" id="stack" aria-live="polite"></div>
+        <nav class="actions" aria-label="Verdict">
+            <button type="button" class="act act-undo" id="actUndo" aria-label="Undo last">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3" /></svg>
+            </button>
+            <button type="button" class="act act-left" data-dir="left">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m0 0 6-6m-6 6 6 6" /></svg>
+                <span></span>
+            </button>
+            <button type="button" class="act act-up" data-dir="up">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6" /></svg>
+                <span></span>
+            </button>
+            <button type="button" class="act act-right" data-dir="right">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                <span></span>
+            </button>
+            <button type="button" class="act act-down" data-dir="down">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m0 0-5-5m5 5 5-5" /></svg>
+                <span></span>
+            </button>
+        </nav>
+    </section>
+
+    <section id="review" class="screen" hidden aria-labelledby="reviewTitle">
+        <header class="deckbar">
+            <button type="button" class="icon-btn" id="backDeck" aria-label="Back to the cards">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+            </button>
+            <h2 id="reviewTitle" class="review-title">Decisions</h2>
+            <span class="icon-btn-space"></span>
+        </header>
+        <div class="review-summary" id="reviewSummary"></div>
+        <div class="review-list" id="reviewList"></div>
+        <div class="review-actions">
+            <button type="button" class="btn btn-primary btn-block" id="sendDecisions">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V8m0 0-4 4m4-4 4 4M5 5h14" /></svg>
+                Send decisions
+            </button>
+            <p class="hint" id="sendHint"></p>
+        </div>
+    </section>
+</div>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-panel">
+        <div class="sheet-grip" aria-hidden="true"></div>
+        <h2 id="sheetTitle"></h2>
+        <div id="sheetBody"></div>
+        <button type="button" class="btn btn-block" id="sheetClose">Close</button>
+    </div>
+</div>
+
+<div class="celebrate" id="celebrate" hidden aria-live="assertive">
+    <div class="celebrate-card">
+        <div class="celebrate-ring"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></div>
+        <div class="celebrate-title" id="celebrateTitle"></div>
+        <div class="celebrate-sub" id="celebrateSub"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="vinder-core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
