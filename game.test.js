@@ -65,4 +65,8 @@ assert.strictEqual(G.streakOf(["2026-11-01", "2026-11-02", "2026-11-03"], new Da
 assert.strictEqual(G.streakOf(["2026-11-01", "2026-11-02"], new Date(2026, 10, 3)), 2);
 assert.strictEqual(G.streakOf(["2026-10-30"], new Date(2026, 10, 3)), 0);
 assert.ok(G.LANTERNS.amber.need({ xp: 0 }) && !G.LANTERNS.rose.need({ xp: 0 }));
+// Bounties never depend on a verdict; single-photo items never ask for every photo.
+assert.ok(["zoom", "details", "every"].includes(G.bountyOf("g#1", 3)));
+assert.ok(Array.from({ length: 20 }, (_, i) => G.bountyOf(`k${i}`, 1)).every(b => b !== "every"));
+assert.ok(Object.keys(G.CARDS).every(id => G.FLAVOR[id]));
 console.log("game rules ok");

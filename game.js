@@ -240,7 +240,27 @@
         verdant: { name: "Verdant", c: "#a7c37f", d: "#6d8a4c", need: m => Object.keys(m.achv || {}).length >= 6, how: "Earn 6 achievements" },
         rose: { name: "Rose", c: "#e0928f", d: "#a35a5a", need: m => levelOf(m.xp).level >= 10, how: "Reach level 10" }
     };
-    const rules = { OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    // Each item telegraphs one bounty before the verdict, like an enemy intent: do the careful thing, get paid.
+    const BOUNTIES = {
+        zoom: { text: "Zoom in", reward: "+2 Light" },
+        details: { text: "Read the details", reward: "+8 shards" },
+        every: { text: "See every photo", reward: "+15 XP" }
+    };
+    const bountyOf = (key, photos) => {
+        const pool = photos > 1 ? ["zoom", "details", "every"] : ["zoom", "details"];
+        return pool[hash(`${key}|bounty`) % pool.length];
+    };
+    const FLAVOR = {
+        gaze: "Look twice. The moon only lies once.", dawn: "The first light finds what the night hid.", ledger: "Every number is a small promise.",
+        closer: "The last word is always the lantern's.", panorama: "From the hill, every car tells the truth.", loupe: "Small glass, large secrets.",
+        notes: "Write it down before the fog takes it.", flare: "Turn the wick up and watch them scatter.", wind: "A gust, and two more cards in your hand.",
+        bounty: "Defects carry shards like mice carry crumbs.", revisit: "What you set aside still waits for you.", quiet: "Read first. Strike after.",
+        whet: "A dull eye is sharpened on stone and patience.", tithe: "The moon pays those who keep its road.", oracle: "Ask, and a second sight opens.",
+        inktrail: "The ink glows where the truth was written.", insight: "Stillness, then the perfect moment.", rally: "One drum, and the whole road answers.",
+        surge: "The moon pulls hard, just once.", deep: "Four photos deep, nothing hides.", echo: "What worked once, works again.",
+        fullmoon: "A whole moon of light, all for you.", bind: "Rope, a knot, and a quiet word."
+    };
+    const rules = { BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -575,8 +595,9 @@
             <div class="g-plate">
                 <div class="g-foe-name"><b id="gFoeName"></b><span class="g-tag" id="gFoeTag"></span></div>
                 <div class="g-foe-sub" id="gFoeSub"></div>
-                <div class="g-life" role="meter" aria-label="Left to decide on this foe" id="gHp"></div>
+                <div class="g-life" role="meter" aria-label="Left to decide on this foe" id="gHp" data-explain="One segment per item still to decide on this foe. Every verdict removes one, whichever verdict it is."></div>
             </div>
+            <div class="g-bounty" id="gBounty" hidden></div>
         </div>`;
     // Dock above the verdict buttons: hero, hand, resources.
     const dock = h("div", "g-dock");
@@ -591,8 +612,9 @@
             </button>
             <div class="g-hand" id="gHand" aria-label="Your hand"></div>
             <div class="g-res">
-                <span id="gMom" title="Momentum"></span>
-                <span id="gScrap" title="Moonshards"></span>
+                <span id="gMom" data-explain="Light: earned by looking closely (new photos, zooming, details, values, asking the AI). Drag an active card up to spend it."></span>
+                <span id="gScrap" data-explain="Moonshards: spend them at the wandering trader, shrines and wells."></span>
+                <button type="button" class="g-piles" id="gPiles" aria-label="Your deck"></button>
             </div>
         </div>`;
     const deckbar = document.querySelector("#deck .deckbar");
@@ -714,6 +736,7 @@
             face.dataset.hero = hero;
             face.replaceChildren(h("span", "g-initial", CLASSES[hero].name[0]), liveArt("heroes", hero, "g-hero-img", CLASSES[hero].name));
         }
+        if (run) $("gPiles").textContent = `Deck ${run.deck.length}`;
         $("gMe").setAttribute("aria-label", `${CLASSES[hero].name}, level ${L.level}. Your legend and settings`);
         $("gLegendRank").textContent = rankOf(L.level);
         const streak = streakOf(meta.nights || [], new Date());
@@ -849,8 +872,10 @@
         const tr = traitHere(gid);
         $("gFoeSub").textContent = [top.group.title, tr && TRAITS[tr].name].filter(Boolean).join(" · ");
         $("gFoeSub").title = tr ? `${TRAITS[tr].name}: ${TRAITS[tr].text}` : "";
+        if (tr) $("gFoeSub").dataset.explain = `${TRAITS[tr].name}: ${TRAITS[tr].text}`; else delete $("gFoeSub").dataset.explain;
         renderLife(gid, ctx.cards.filter(c => String(c.group.groupId) === gid));
         renderHand();
+        renderBounty();
     }
 
     // ---------- overlays, shown one at a time ----------
@@ -896,6 +921,8 @@
     function bigCard(id, up, note) {
         const def = CARDS[id];
         const b = h("button", `g-big g-r${Math.min(4, def.unlock)}${up ? " g-up" : ""}`);
+        meta.seenCards = meta.seenCards || {};
+        if (!meta.seenCards[id]) { meta.seenCards[id] = 1; saveMeta(); }
         b.type = "button";
         const pic = h("span", "g-big-art");
         pic.append(h("span", "g-initial", def.name[0]), art(`cards/${id}`, "", ""));
@@ -1177,6 +1204,57 @@
         document.body.appendChild(a); a.click();
         setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
     }
+    function pilesOverlay() {
+        const body = h("div", "g-body");
+        const pile = (title, uids, note) => {
+            body.appendChild(h("h3", "g-h3", `${title} · ${uids.length}`));
+            if (note) body.appendChild(h("p", "g-fine", note));
+            const row = h("div", "g-pile");
+            const cards = uids.map(cardOf).filter(Boolean);
+            if (title === "Draw pile") cards.sort((a, b) => CARDS[a.id].name.localeCompare(CARDS[b.id].name));
+            for (const c of cards) {
+                const t = h("div", `g-mini g-${rarity(CARDS[c.id])}`);
+                const pic = h("span", "g-card-art");
+                pic.append(h("span", "g-initial", CARDS[c.id].name[0]), art(`cards/${c.id}`, "", ""));
+                t.append(pic, h("b", "", `${CARDS[c.id].name}${c.up ? "+" : ""}`), h("small", "", CARDS[c.id].text));
+                row.appendChild(t);
+            }
+            if (!cards.length) row.appendChild(h("p", "g-fine", "Empty"));
+            body.appendChild(row);
+        };
+        pile("In hand", run.hand);
+        pile("Draw pile", run.draw, "Shown in name order, so the order you draw stays a surprise.");
+        pile("Discard pile", run.discard, "Shuffled back into the draw pile when it runs out.");
+        panel({ kicker: "Your deck", title: `${run.deck.length} cards`, body, wide: true, actions: [{ label: "Close", primary: true }] });
+    }
+    function compendiumOverlay() {
+        meta.seenCards = meta.seenCards || {};
+        const body = h("div", "g-body");
+        const ids = Object.keys(CARDS), seen = ids.filter(id => meta.seenCards[id] || CARDS[id].unlock <= level());
+        body.appendChild(h("p", "g-lore", `${seen.length} of ${ids.length} cards known · ${Object.keys(RELICS).length} relics`));
+        const grid = h("div", "g-pile");
+        for (const id of ids) {
+            const known = seen.includes(id), def = CARDS[id];
+            const t = h("div", `g-mini g-${rarity(def)}${known ? "" : " locked"}`);
+            const pic = h("span", "g-card-art");
+            if (known) pic.append(h("span", "g-initial", def.name[0]), art(`cards/${id}`, "", ""));
+            t.append(pic, h("b", "", known ? def.name : "???"), h("small", "", known ? def.text : `Unlocks at Lv ${def.unlock}`));
+            if (known) t.appendChild(h("em", "", FLAVOR[id] || ""));
+            grid.appendChild(t);
+        }
+        body.appendChild(grid);
+        body.appendChild(h("h3", "g-h3", "Relics"));
+        const rel = h("div", "g-pile");
+        for (const [id, r] of Object.entries(RELICS)) {
+            const t = h("div", "g-mini");
+            const pic = h("span", "g-card-art");
+            pic.append(h("span", "g-initial", r.name[0]), art(`ui/relic-${id}`, "", ""));
+            t.append(pic, h("b", "", r.name), h("small", "", r.text));
+            rel.appendChild(t);
+        }
+        body.appendChild(rel);
+        panel({ kicker: "Compendium", title: "Cards and relics", body, wide: true, actions: [{ label: "Close", primary: true }] });
+    }
     function profileOverlay() {
         const L = levelOf(meta.xp);
         const body = h("div", "g-body");
@@ -1217,7 +1295,7 @@
         }
         body.appendChild(ach);
         panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true,
-            actions: [{ label: "Settings", onClick: () => { queue.unshift(settingsOverlay); } }, { label: "Close", primary: true }] });
+            actions: [{ label: "Compendium", onClick: () => { queue.unshift(compendiumOverlay); } }, { label: "Settings", onClick: () => { queue.unshift(settingsOverlay); } }, { label: "Close", primary: true }] });
     }
     function settingsOverlay() {
         const body = h("div", "g-body");
@@ -1338,6 +1416,28 @@
         renderMe();
         saveMeta(); saveRun();
     }
+    function payBounty(kind) {
+        if (!item || item.paid || run.scored[item.key] || item.bounty !== kind) return;
+        item.paid = true;
+        if (kind === "zoom") earnLight(2);
+        if (kind === "details") { run.scrap += 8; floatAt($("gScrap"), "+8 shards", "g-f-xp"); }
+        if (kind === "every") grant(15, portraitEl);
+        floatAt($("gBounty"), "Bounty!", "g-f-xp");
+        sfx("coin");
+        haptic(HAPTIC.pick);
+        renderBounty();
+        saveRun();
+    }
+    function renderBounty() {
+        const el = $("gBounty");
+        if (!el) return;
+        if (!item || !item.bounty || !meta.on) { el.hidden = true; return; }
+        const b = BOUNTIES[item.bounty];
+        el.hidden = false;
+        el.classList.toggle("done", Boolean(item.paid));
+        el.replaceChildren(h("b", "", item.paid ? "Bounty claimed" : `Bounty: ${b.text}`), h("span", "", b.reward));
+        el.dataset.explain = "Each item shows one bounty before you decide. Do it before your verdict to claim the reward. Verdicts are never part of a bounty.";
+    }
     function earnLight(n) {
         if (!n || !run) return;
         const before = run.light;
@@ -1438,6 +1538,21 @@
         if (crit) { setTimeout(() => floatAt(portraitEl, "CRIT!", "g-f-crit"), 430); say(line("crit_1")); haptic(HAPTIC.crit); }
         else { haptic(HAPTIC.card); if (Math.random() < 0.12) say(line("card")); }
     }
+    // Play the foe’s flinch clip once, then go back to its idle loop.
+    function hurtAnim() {
+        const img = portraitEl.querySelector(".g-foe-img");
+        const gid = portraitEl.dataset.gid;
+        if (!img || !gid || portraitEl.querySelector(".g-hurt-img")) return;
+        // A fresh element always starts the clip from its first frame.
+        const hurt = h("img", "g-foe-img g-hurt-img");
+        hurt.alt = img.alt;
+        let done = false;
+        const back = () => { if (done) return; done = true; if (hurt.isConnected) hurt.replaceWith(img); };
+        hurt.onerror = back;
+        hurt.onload = () => { if (!done && img.isConnected) img.replaceWith(hurt); };
+        hurt.src = `${ART}foes/hurt/${speciesOf(gid, nodeType(gid)).id}.webp`;
+        setTimeout(back, 1700);
+    }
     function strikeFx(color) {
         const c = center(portraitEl);
         floatAt(portraitEl, "−1", "g-f-dmg");
@@ -1446,6 +1561,7 @@
         setTimeout(() => {
             portraitEl.classList.remove("g-blanch");
             restartClass(portraitEl, "g-hurt", 300);
+            hurtAnim();
             restartClass(hud, "g-shake", 200);
             burst(c.x, c.y, { n: 22, colors: [color, "#e6dcc6", "#9aa3a8"], speed: 6 });
         }, 60);
@@ -1534,7 +1650,7 @@
             }
         } else {
             if (String(top.group.groupId) !== run.foe) startFoe(top.group);
-            if (!item || item.key !== top.key) item = { key: top.key, seen: new Set(), fired: new Set(), lit: new Set(), checks: 0 };
+            if (!item || item.key !== top.key) item = { key: top.key, seen: new Set(), fired: new Set(), lit: new Set(), checks: 0, bounty: bountyOf(top.key, top.photos.length), paid: false, total: top.photos.length };
         }
         renderHud();
         mood();
@@ -1683,6 +1799,8 @@
     });
     function fireAction(kind) {
         if (!meta.on || !run || !item) return;
+        if (kind === "viewer") payBounty("zoom");
+        if (kind === "details") payBounty("details");
         if (!run.scored[item.key]) {
             const tr = run.foe ? traitHere(run.foe) : null;
             if (kind === "check") { if (item.checks < 2) { item.checks++; earnLight(1); } }
@@ -1698,6 +1816,7 @@
         if (d.key && d.key !== item.key) return;
         const before = item.seen.size;
         item.seen.add(d.src);
+        if (item.total > 1 && item.seen.size >= item.total) payBounty("every");
         if (d.viewer) fireAction("viewer");
         else if (item.seen.size > before && before > 0) {
             sfx("flip");
@@ -1711,8 +1830,29 @@
     document.addEventListener("vinder:ai", () => fireAction("ai"));
     document.addEventListener("vinder:send", () => { if (meta.on) { say(line("send_1"), true); sfx("send"); } });
 
+    $("gStrip").dataset.explain = "Your route tonight: foes, elites and the boss. Tap to open the map.";
     $("gStrip").addEventListener("click", () => { if (ctx) { sfx("map"); enqueue(mapOverlay); } });
     $("gMe").addEventListener("click", () => { sfx("ui"); enqueue(profileOverlay); });
+    $("gPiles").addEventListener("click", () => { if (run) { sfx("draw"); enqueue(pilesOverlay); } });
+    // Hold to explain: long-press anything with data-explain.
+    let explainTimer = 0, explainEl = null;
+    const hideExplain = () => { clearTimeout(explainTimer); if (explainEl) { explainEl.remove(); explainEl = null; } };
+    document.addEventListener("pointerdown", e => {
+        const t = e.target.closest && e.target.closest("[data-explain]");
+        hideExplain();
+        if (!t || !meta.on) return;
+        explainTimer = setTimeout(() => {
+            const r = t.getBoundingClientRect();
+            explainEl = h("div", "g-explain", t.dataset.explain);
+            explainEl.setAttribute("role", "tooltip");
+            document.body.appendChild(explainEl);
+            const w = explainEl.offsetWidth;
+            explainEl.style.left = `${Math.max(8, Math.min(root.innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+            explainEl.style.top = r.top > 140 ? `${r.top - explainEl.offsetHeight - 10}px` : `${r.bottom + 10}px`;
+            haptic(HAPTIC.light);
+        }, 450);
+    }, true);
+    for (const ev of ["pointerup", "pointercancel", "scroll"]) document.addEventListener(ev, () => { clearTimeout(explainTimer); setTimeout(hideExplain, ev === "pointerup" ? 1400 : 0); }, true);
     $("gMute").addEventListener("click", () => { meta.mute = !meta.mute; saveMeta(); apply(); sfx("ui"); });
     // Browsers only start sound after a tap; any tap brings the music back.
     document.addEventListener("pointerdown", () => { if (meta.on && (meta.music || meta.sfx)) { audio(); mood(); } }, true);
