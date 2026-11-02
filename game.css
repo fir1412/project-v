@@ -461,3 +461,30 @@ html[data-go="back"]::view-transition-new(root) { animation-name: g-vt-back; }
 .g-splash { padding-top: calc(env(safe-area-inset-top) + 7vh); background-position: center calc(min(100vw, 520px) * -0.15); }
 @keyframes g-splash-rise { from { background-position: center calc(min(100vw, 520px) * -0.15 + 150px); } }
 .g-splash-bar { margin-top: 52vh; }
+
+/* ---------- premium round 2: tutorial + comfort settings ---------- */
+.g-coach { position: fixed; inset: 0; z-index: 60; }
+.g-coach-spot { position: fixed; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(12, 16, 28, .78), 0 0 0 3px var(--amber) inset; transition: all .35s cubic-bezier(.2, .9, .2, 1); pointer-events: none; }
+.g-coach-bubble { position: fixed; left: 16px; right: 16px; max-width: 460px; margin: 0 auto; padding: 14px 16px 12px; border-radius: 12px; background: var(--bone); color: var(--night);
+    box-shadow: 0 4px 0 var(--bone-deep); font-family: var(--g-text); }
+.g-coach-in { animation: g-draw .35s var(--g-in); }
+.g-coach-who { font: 800 12px/1 var(--g-text); letter-spacing: .14em; text-transform: uppercase; color: var(--teal); }
+.g-coach-ja { margin: 6px 0 4px; font: 700 calc(16px * var(--g-ts, 1))/1.45 var(--g-jp); }
+.g-coach-en { margin: 0; font-size: calc(13.5px * var(--g-ts, 1)); line-height: 1.4; color: var(--teal); }
+.g-coach-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.g-coach-step { flex: 1; font: 700 12px/1 var(--g-text); color: var(--teal); }
+.g-coach-skip { min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--teal); font: 700 14px var(--g-text); cursor: pointer; }
+.g-coach-row .btn { min-height: 44px; }
+body.g-ts-s { --g-ts: .92; } body.g-ts-m { --g-ts: 1; } body.g-ts-l { --g-ts: 1.12; } body.g-ts-xl { --g-ts: 1.25; }
+body.game-on .g-sub, body.game-on .g-tip { font-size: calc(15px * var(--g-ts, 1)); }
+body.game-on .g-lore { font-size: calc(16px * var(--g-ts, 1)); }
+body.game-on .g-fine, body.game-on .g-path-text small, body.game-on .g-path-text em, body.game-on .g-big-text, body.game-on .g-relic-text { font-size: calc(12.5px * var(--g-ts, 1)); }
+body.game-on .g-choice { font-size: calc(15px * var(--g-ts, 1)); }
+body.game-on .card-title h2 { font-size: calc(26px * var(--g-ts, 1)); }
+body.game-on .chip, body.game-on .card-sub, body.game-on .g-foe-sub { font-size: calc(12.5px * var(--g-ts, 1)); }
+body.game-on .act span { font-size: calc(11px * var(--g-ts, 1)); }
+body.g-cb.game-on .act[data-dir="right"] { --c: #0072b2 !important; }
+body.g-cb.game-on .act[data-dir="left"] { --c: #e69f00 !important; }
+body.g-cb.game-on .act[data-dir="up"] { --c: #d55e00 !important; }
+body.g-cb.game-on .act[data-dir="down"] { --c: #777 !important; }
+body.g-reduce *, body.g-reduce *::before, body.g-reduce *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }

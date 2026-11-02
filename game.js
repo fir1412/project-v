@@ -204,12 +204,13 @@
 
     // ---------- state ----------
     const V = root.VINderCore;
-    const reduce = root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const systemReduce = Boolean(root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    let reduce = systemReduce;
     const store = {
         get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (_) { return d; } },
         set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* private mode: progress lives for this visit only */ } }
     };
-    const meta = Object.assign({ on: false, music: true, sfx: true, voice: true, mute: false, subs: "ja", vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
+    const meta = Object.assign({ on: false, music: true, sfx: true, voice: true, mute: false, subs: "ja", haptics: true, reduceMotion: false, textSize: "m", cb: false, tutorialDone: false, vol: 0.7, musicVol: 0.6, sfxVol: 0.9, voiceVol: 1, xp: 0, runs: 0, foes: 0, verdicts: 0 },
         store.get("vinderGameMeta", {}));
     const saveMeta = () => store.set("vinderGameMeta", meta);
     const runKey = id => `vinderGameRun:${id}`;
@@ -385,7 +386,12 @@
         grade_s: ["完璧。文句なしのSランク！", "Perfect. An undisputed S rank!"],
         end_1: ["今夜の物語は、ここでおしまい。報告を送ってね。", "Tonight's tale ends here. Send your report."],
         end_2: ["夜を越えたね。お疲れさま。", "You made it through the night. Good work."],
-        send_1: ["報告、夜空に飛んでった。お疲れさま！", "The report's flown off into the night sky. Good work!"]
+        send_1: ["報告、夜空に飛んでった。お疲れさま！", "The report's flown off into the night sky. Good work!"],
+        tut_1: ["これが今夜の相手。下の写真をよく見て、判定してね。", "This is tonight’s foe. Look closely at the photo below, then give your verdict."],
+        tut_2: ["写真をめくったり、拡大すると、ランタンの光がたまるよ。", "Flip through the photos or zoom in, and your lantern’s Light builds up."],
+        tut_3: ["光がたまったら、カードを上に引いて使ってね。", "Once you have Light, drag a card upward to play it."],
+        tut_4: ["どの判定も同じ一撃。正しいと思うものを選んでね。", "Every verdict strikes the same blow. Choose what you think is right."],
+        tut_5: ["相手を倒したら、次の道を選べるよ。いってらっしゃい。", "Defeat a foe and you can choose your next road. Off you go."]
     };
     const GROUPS = { intro: ["intro_1", "intro_2"], elite: ["elite_1", "elite_2"], boss: ["boss_1", "boss_2"], foe: ["foe_1", "foe_2", "foe_3"],
         defeat: ["defeat_1", "defeat_2", "defeat_3", "defeat_4"], level: ["level_1", "level_2", "level_3"], end: ["end_1", "end_2"], card: ["card_1", "card_2"] };
@@ -1070,45 +1076,6 @@
         const dl = h("dl", "g-stats");
         for (const [k, v] of [["Tales told", meta.runs], ["Foes vanquished", meta.foes], ["Verdicts", meta.verdicts], ["Total XP", meta.xp]]) dl.append(h("dt", "", k), h("dd", "", String(v)));
         body.appendChild(dl);
-        const opts = h("div", "g-opts");
-        const toggle = (key, label) => {
-            const l = h("label", "g-opt");
-            const i = h("input");
-            i.type = "checkbox"; i.checked = Boolean(meta[key]);
-            i.addEventListener("change", () => { meta[key] = i.checked; saveMeta(); apply(); });
-            l.append(i, h("span", "", label));
-            opts.appendChild(l);
-        };
-        toggle("on", "Pale Moon game mode");
-        toggle("music", "Music");
-        toggle("sfx", "Sound effects");
-        toggle("voice", "Narrator voice (Yui)");
-        const sl = h("label", "g-opt g-vol");
-        const sel = h("select", "g-select");
-        for (const [v, t] of [["ja", "Japanese, tap for English"], ["en", "English, tap for Japanese"], ["off", "Off"]]) {
-            const o = h("option", "", t);
-            o.value = v;
-            o.selected = meta.subs === v;
-            sel.appendChild(o);
-        }
-        sel.addEventListener("change", () => { meta.subs = sel.value; saveMeta(); say(line("welcome_back"), true); });
-        sl.append(h("span", "", "Subtitles"), sel);
-        opts.appendChild(sl);
-        toggle("mute", "Mute everything");
-        const slider = (key, label, onSet) => {
-            const vl = h("label", "g-opt g-vol");
-            const vi = h("input");
-            vi.type = "range"; vi.min = "0"; vi.max = "1"; vi.step = "0.05"; vi.value = String(meta[key]);
-            vi.addEventListener("input", () => { meta[key] = Number(vi.value); levels(); saveMeta(); });
-            if (onSet) vi.addEventListener("change", onSet);
-            vl.append(h("span", "", label), vi);
-            opts.appendChild(vl);
-        };
-        slider("vol", "Master");
-        slider("musicVol", "Music");
-        slider("sfxVol", "Effects", () => sfx("hit"));
-        slider("voiceVol", "Narrator");
-        body.appendChild(opts);
         body.appendChild(h("h3", "g-h3", "Card collection"));
         const grid = h("div", "g-collection");
         for (const id of Object.keys(CARDS)) {
@@ -1128,7 +1095,59 @@
             best.appendChild(tile);
         }
         body.appendChild(best);
-        panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true, actions: [{ label: "Close", primary: true }] });
+        panel({ kicker: "Your legend", title: `Lv ${L.level} ${rankOf(L.level)}`, body, wide: true,
+            actions: [{ label: "Settings", onClick: () => { queue.unshift(settingsOverlay); } }, { label: "Close", primary: true }] });
+    }
+    function settingsOverlay() {
+        const body = h("div", "g-body");
+        const section = title => { const s = h("div", "g-opts"); body.append(h("h3", "g-h3", title), s); return s; };
+        const toggle = (box, key, label, after) => {
+            const l = h("label", "g-opt");
+            const i = h("input");
+            i.type = "checkbox"; i.checked = Boolean(meta[key]);
+            i.addEventListener("change", () => { meta[key] = i.checked; saveMeta(); apply(); if (after) after(); });
+            l.append(i, h("span", "", label));
+            box.appendChild(l);
+        };
+        const choose = (box, key, label, options, after) => {
+            const l = h("label", "g-opt g-vol");
+            const sel = h("select", "g-select");
+            for (const [v, t] of options) { const o = h("option", "", t); o.value = v; o.selected = meta[key] === v; sel.appendChild(o); }
+            sel.addEventListener("change", () => { meta[key] = sel.value; saveMeta(); apply(); if (after) after(); });
+            l.append(h("span", "", label), sel);
+            box.appendChild(l);
+        };
+        const slider = (box, key, label, onSet) => {
+            const vl = h("label", "g-opt g-vol");
+            const vi = h("input");
+            vi.type = "range"; vi.min = "0"; vi.max = "1"; vi.step = "0.05"; vi.value = String(meta[key]);
+            vi.addEventListener("input", () => { meta[key] = Number(vi.value); levels(); saveMeta(); });
+            if (onSet) vi.addEventListener("change", onSet);
+            vl.append(h("span", "", label), vi);
+            box.appendChild(vl);
+        };
+        const sound = section("Sound");
+        toggle(sound, "mute", "Mute everything");
+        toggle(sound, "music", "Music");
+        toggle(sound, "sfx", "Sound effects");
+        toggle(sound, "voice", "Narrator voice (Yui)");
+        choose(sound, "subs", "Subtitles", [["ja", "Japanese, tap for English"], ["en", "English, tap for Japanese"], ["off", "Off"]], () => say(line("welcome_back"), true));
+        slider(sound, "vol", "Master");
+        slider(sound, "musicVol", "Music");
+        slider(sound, "sfxVol", "Effects", () => sfx("hit"));
+        slider(sound, "voiceVol", "Narrator");
+        const comfort = section("Comfort");
+        choose(comfort, "textSize", "Text size", [["s", "Small"], ["m", "Medium"], ["l", "Large"], ["xl", "Extra large"]]);
+        toggle(comfort, "haptics", "Vibration", () => haptic(HAPTIC.pick));
+        toggle(comfort, "reduceMotion", "Reduce motion");
+        toggle(comfort, "cb", "Colour-blind verdict colours");
+        const game = section("Game");
+        toggle(game, "on", "Pale Moon game mode");
+        const replay = h("button", "g-chip-btn", "Replay the tutorial with Yui");
+        replay.type = "button";
+        replay.addEventListener("click", () => { meta.tutorialDone = false; saveMeta(); nextOverlay(); if (screen === "deck") maybeTutorial(); });
+        game.appendChild(replay);
+        panel({ kicker: "Settings", title: "Make it yours", body, wide: true, actions: [{ label: "Done", primary: true }] });
     }
     overlay.addEventListener("keydown", e => {
         if (e.key !== "Escape") return;
@@ -1139,6 +1158,10 @@
     // ---------- game flow ----------
     function apply() {
         document.body.classList.toggle("game-on", meta.on);
+        reduce = systemReduce || Boolean(meta.reduceMotion);
+        document.body.classList.toggle("g-reduce", reduce);
+        document.body.classList.toggle("g-cb", Boolean(meta.cb));
+        for (const s of ["s", "m", "l", "xl"]) document.body.classList.toggle(`g-ts-${s}`, meta.textSize === s);
         tagline.hidden = !meta.on;
         toggleBtn.setAttribute("aria-checked", String(meta.on));
         talesHead.textContent = meta.on ? "Tales" : "Packs";
@@ -1304,6 +1327,53 @@
         } else sfx("draw");
         saveRun();
     }
+    // First-run tutorial: Yui points at each part of the battle screen. Replay from Settings.
+    const TUTORIAL = [["#gHud", "tut_1"], ["#stack", "tut_2"], ["#gHand", "tut_3"], ["#deck .actions", "tut_4"], ["#gStrip", "tut_5"]];
+    let coaching = false;
+    function maybeTutorial() {
+        if (meta.tutorialDone || coaching || screen !== "deck" || !meta.on || !topCard()) return;
+        coaching = true;
+        enqueue(coach);
+    }
+    function coach() {
+        const layer = h("div", "g-coach");
+        const spot = h("div", "g-coach-spot");
+        const bubble = h("div", "g-coach-bubble");
+        bubble.setAttribute("role", "dialog");
+        bubble.setAttribute("aria-live", "polite");
+        layer.append(spot, bubble);
+        document.body.appendChild(layer);
+        document.body.classList.add("g-modal");
+        let i = 0;
+        const finish = () => { layer.remove(); meta.tutorialDone = true; saveMeta(); coaching = false; nextOverlay(); };
+        const show = () => {
+            const [sel, id] = TUTORIAL[i];
+            const target = document.querySelector(sel);
+            const l = line(id);
+            if (!target || !l) { if (++i < TUTORIAL.length) show(); else finish(); return; }
+            const r = target.getBoundingClientRect(), pad = 6;
+            Object.assign(spot.style, { left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
+            const below = r.bottom + 190 < root.innerHeight;
+            bubble.style.top = below ? `${r.bottom + 14}px` : "";
+            bubble.style.bottom = below ? "" : `${root.innerHeight - r.top + 14}px`;
+            const next = h("button", "btn btn-primary", i === TUTORIAL.length - 1 ? "Let's go" : "Next");
+            next.type = "button";
+            next.addEventListener("click", () => { sfx("ui"); if (++i < TUTORIAL.length) show(); else finish(); });
+            const skip = h("button", "g-coach-skip", "Skip");
+            skip.type = "button";
+            skip.addEventListener("click", finish);
+            const ja = h("p", "g-coach-ja g-ja", l.ja);
+            ja.lang = "ja";
+            const row = h("div", "g-coach-row");
+            row.append(h("span", "g-coach-step", `${i + 1} / ${TUTORIAL.length}`), skip, next);
+            bubble.replaceChildren(h("b", "g-coach-who", "Yui"), ja, h("p", "g-coach-en", l.en), row);
+            restartClass(bubble, "g-coach-in", 400);
+            say(l, true);
+            sub.hidden = true; // the bubble already shows the line
+            next.focus({ preventScroll: true });
+        };
+        show();
+    }
     function sync() {
         if (!meta.on || !ctx || !run) { renderHud(); return; }
         const wait = holdUntil - performance.now();
@@ -1327,6 +1397,8 @@
         renderHud();
         mood();
         if (greet) { greet = false; say(line("welcome_back")); }
+        // After the intro and the first path choice, Yui teaches the screen once.
+        setTimeout(() => { if (!showing) maybeTutorial(); }, 900);
     }
     function defeat(group) {
         const gid = String(group.groupId);
