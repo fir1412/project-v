@@ -280,3 +280,4 @@ button { font: inherit; color: inherit; }
 .review-list > .grp { flex: none; }
 .verdict-btn { max-width: 7rem; padding: 0 10px; font-size: 13px; }
 .chip.block, .grp-flag.block { background: #fecaca; color: #7f1d1d; }
+.pack-old { margin-top: 6px; font-size: 13px; font-weight: 600; color: #713f12; background: #fde68a; border-radius: 10px; padding: 6px 10px; }

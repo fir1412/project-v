@@ -5,6 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
+    const APP_VERSION = "2026-11-02 19:36 GMT+8 · 7f1b98e5e0";
 
     let dbPromise = null;
     function db() {
@@ -97,6 +98,31 @@
         }
     }
 
+    $("appVersion").textContent = `Version ${APP_VERSION}`;
+    $("checkUpdate").addEventListener("click", async () => {
+        const button = $("checkUpdate");
+        if (!("serviceWorker" in navigator)) { toast("Updates come with each reload here."); return; }
+        button.disabled = true;
+        button.textContent = "Checking…";
+        try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (!reg) { location.reload(); return; }
+            await reg.update();
+            if (reg.installing || reg.waiting) { toast("Updating…"); return; }
+            toast(`You're on the latest version (${APP_VERSION}).`);
+        } catch (_) {
+            toast("Couldn't check - are you online?");
+        } finally {
+            button.disabled = false;
+            button.textContent = "Check for updates";
+        }
+    });
+
+    const packMissing = pack => [
+        Array.isArray(pack.itemFields) && pack.itemFields.length ? "" : "correcting place / name",
+        pack.groups && pack.groups.some(g => Array.isArray(g.fields) || g.fieldsNote) ? "" : "checking the values"
+    ].filter(Boolean);
+
     async function renderHome() {
         const list = $("packs");
         const packs = (await getAll("packs")).sort((a, b) => (b.openedAt || 0) - (a.openedAt || 0));
@@ -117,7 +143,9 @@
             const groups = new Set(r.cards.map(c => c.group.groupId)).size;
             const box = el("article", "pack");
             const top = el("div", "pack-top");
-            top.append(el("div", "pack-name", item.pack.title || `Pack ${fmtDate(item.pack.createdAt)}`), el("div", "pack-meta", `${groups} groups · ${p.total} cards`));
+            top.append(el("div", "pack-name", item.pack.title || `Pack ${fmtDate(item.pack.createdAt)}`), el("div", "pack-meta", `${groups} groups · ${p.total} cards · made ${fmtDate(item.pack.createdAt)}`));
+            const missing = packMissing(item.pack);
+            if (missing.length) top.appendChild(el("div", "pack-old", `Older pack - no ${missing.join(" or ")}. Make a new pack for those.`));
             const bar = el("div", "pack-bar");
             const fill = el("span");
             fill.style.width = `${p.total ? Math.round((p.decided / p.total) * 100) : 0}%`;

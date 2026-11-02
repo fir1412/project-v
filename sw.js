@@ -1,4 +1,4 @@
-const VERSION = "vinder-068d95052f";
+const VERSION = "vinder-7f1b98e5e0";
 const SHELL = ["./", "index.html", "styles.css", "app.js", "vinder-core.js", "manifest.webmanifest",
     "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png"];
 
