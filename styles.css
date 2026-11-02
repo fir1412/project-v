@@ -281,3 +281,23 @@ button { font: inherit; color: inherit; }
 .verdict-btn { max-width: 7rem; padding: 0 10px; font-size: 13px; }
 .chip.block, .grp-flag.block { background: #fecaca; color: #7f1d1d; }
 .pack-old { margin-top: 6px; font-size: 13px; font-weight: 600; color: #713f12; background: #fde68a; border-radius: 10px; padding: 6px 10px; }
+
+.viewer-caption { position: absolute; left: 10px; right: 10px; top: calc(60px + env(safe-area-inset-top)); padding: 6px 10px; border-radius: 10px;
+    background: rgba(0,0,0,.55); color: #fff; font-size: 13.5px; line-height: 1.35; overflow-wrap: anywhere; pointer-events: none; }
+.viewer-edit { position: absolute; left: 10px; right: 10px; bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: 16px; background: rgba(20,24,32,.94); }
+.viewer-edit .viewer-edit-label { width: 100%; font-size: 13.5px; font-weight: 650; color: #cbd5e1; }
+.viewer-edit .field-input { flex: 1; min-width: 0; background: #0b0f17; color: #fff; border-color: #8a96a6; }
+.field-pick { text-align: left; cursor: pointer; min-height: 44px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-search { width: 100%; margin-bottom: 8px; }
+.list-pick { display: flex; flex-direction: column; gap: 6px; max-height: 55dvh; overflow-y: auto; margin-bottom: 10px; }
+.list-pick .move-opt { min-height: 48px; }
+.hint-box { display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 14px; background: rgba(11,107,203,.08); border: 1px solid rgba(11,107,203,.35); }
+.hint-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 14.5px; }
+.hint-text small { color: var(--text-muted); font-size: 12.5px; font-weight: 600; }
+.hint-use { flex: none; border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.fields-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fields-head .field-ok { flex: none; }
+.link-btn { border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0; min-height: 32px; }
+.item-value .field-head { min-height: 24px; }
+.item-value .field-pick, .field-line .field-pick { flex: 1; }

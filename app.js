@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-02 19:36 GMT+8 · 7f1b98e5e0";
+    const APP_VERSION = "2026-11-02 19:57 GMT+8 · ae4e748f79";
 
     let dbPromise = null;
     function db() {
@@ -36,14 +36,14 @@
     const put = (name, value) => run(name, "readwrite", s => s.put(value));
     const del = (name, key) => run(name, "readwrite", s => s.delete(key));
 
-    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {}, checks: {}, overrides: {} };
+    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {}, checks: {}, overrides: {}, translations: {} };
     const actionById = id => Object.values(S.actions).find(a => a.id === id) || null;
     const labelOf = id => (actionById(id) || { label: id }).label;
     const colorOf = id => (actionById(id) || { color: "" }).color;
 
     async function saveState() {
         if (!S.pack) return;
-        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt, moves: S.moves, checks: S.checks, overrides: S.overrides });
+        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt, moves: S.moves, checks: S.checks, overrides: S.overrides, translations: S.translations });
     }
 
     function show(screen) {
@@ -169,13 +169,55 @@
         }
     }
 
+    async function carryOver(cards, pack) {
+        const out = { decisions: {}, moves: {}, checks: {}, overrides: {}, translations: {}, count: 0 };
+        let olds = [];
+        try { olds = (await getAll("packs")).filter(p => p.packId !== pack.packId).sort((a, b) => (a.openedAt || 0) - (b.openedAt || 0)); } catch (_) { return out; }
+        const newByKey = new Map(cards.map(c => [c.key, c]));
+        const groups = new Map((pack.groups || []).map(g => [String(g.groupId), g]));
+        for (const old of olds) {
+            const st = await get("state", old.packId);
+            if (!st) continue;
+            let oldCards = [];
+            try { oldCards = V.readPack(old.pack).cards; } catch (_) { continue; }
+            const same = new Map();
+            for (const oc of oldCards) {
+                const nc = newByKey.get(oc.key);
+                if (nc && String(nc.item.title || "") === String(oc.item.title || "")) same.set(oc.key, nc);
+            }
+            for (const [key, d] of Object.entries(st.decisions || {})) if (same.has(key) && !d.preset) { out.decisions[key] = d; out.count++; }
+            for (const [key, c] of Object.entries(st.checks || {})) {
+                const g = groups.get(String(c.groupId));
+                if (!g) continue;
+                const ok = c.itemIndex === null || c.itemIndex === undefined
+                    ? (Array.isArray(g.fields) && g.fields.some(f => f.id === c.fieldId))
+                    : same.has(`${c.groupId}#${c.itemIndex}`);
+                if (ok) { out.checks[key] = c; out.count++; }
+            }
+            for (const [key, m] of Object.entries(st.moves || {})) {
+                const g = groups.get(String(m.groupId));
+                const has = g && ((g.items || []).some(it => (it.photos || []).some(p => String(p.id) === m.photoId)) || (g.attachments || []).some(a => String(a.id) === m.photoId));
+                const fromOk = m.from === null || same.has(`${m.groupId}#${m.from}`);
+                if (has && fromOk) { out.moves[key] = m; out.count++; }
+            }
+            for (const [key, o] of Object.entries(st.overrides || {})) if (groups.has(String(o.groupId))) { out.overrides[key] = o; out.count++; }
+            for (const [gid, t] of Object.entries(st.translations || {})) if (groups.has(String(gid))) out.translations[gid] = t;
+        }
+        return out;
+    }
+
     async function loadPackFile(file) {
         try {
             const pack = JSON.parse(await file.text());
             const r = V.readPack(pack);
             if (!r.ok) { toast(r.errors[0], 4000); return; }
             await put("packs", { packId: pack.packId, pack, openedAt: Date.now() });
-            if (!(await get("state", pack.packId))) await put("state", { packId: pack.packId, decisions: V.presetDecisions(r.cards, r.actions, pack.createdAt), history: [], sentAt: null });
+            if (!(await get("state", pack.packId))) {
+                const carried = await carryOver(r.cards, pack);
+                await put("state", { packId: pack.packId, decisions: { ...V.presetDecisions(r.cards, r.actions, pack.createdAt), ...carried.decisions },
+                    history: [], sentAt: null, moves: carried.moves, checks: carried.checks, overrides: carried.overrides, translations: carried.translations });
+                if (carried.count) setTimeout(() => toast(`Carried over ${carried.count} thing${carried.count === 1 ? "" : "s"} you did in an older pack.`, 4000), 600);
+            }
             let coached = true;
             try { coached = Boolean(localStorage.getItem("vinderCoached")); } catch (_) { /* fine */ }
             if (coached) toast(`Pack loaded: ${r.cards.length} cards. It's on this phone now - works offline.`);
@@ -205,6 +247,7 @@
         S.moves = st.moves || {};
         S.checks = st.checks || {};
         S.overrides = st.overrides || {};
+        S.translations = st.translations || {};
         S.photoIndex = 0;
         applyActions();
         show(screen || "deck");
@@ -506,8 +549,9 @@
     const VW = { list: [], index: 0, s: 1, tx: 0, ty: 0, baseW: 0, baseH: 0, pointers: new Map(), gesture: null, lastTap: 0,
         measuring: false, ref: [], refMm: 0, len: [] };
 
-    function openViewer(list, index) {
+    function openViewer(list, index, onClose) {
         if (!list || !list.length) return;
+        VW.onClose = onClose || null;
         VW.list = list;
         VW.index = Math.max(0, Math.min(index || 0, list.length - 1));
         $("viewer").hidden = false;
@@ -517,6 +561,9 @@
     }
     function closeViewer() {
         $("viewer").hidden = true;
+        const after = VW.onClose;
+        VW.onClose = null;
+        if (after) after();
         if (!$("deck").hidden && $("sheet").hidden) renderDeck();
         $("viewerImg").removeAttribute("src");
         VW.pointers.clear();
@@ -542,8 +589,32 @@
         const labels = (S.pack && S.pack.moveLabels) || {};
         return m.to === "new" ? (labels.newItem || "New item") : m.to === "none" ? (labels.none || "Off this item") : itemTitle({ groupId: m.groupId }, m.to);
     }
-    function updateViewerMove() {
+    function updateViewerEdit() {
+        const bar = $("viewerEdit");
         const photo = VW.list[VW.index] || {};
+        bar.replaceChildren();
+        bar.hidden = !photo.edit || VW.measuring;
+        if (!photo.edit) return;
+        const e = photo.edit;
+        const save = async v => {
+            await e.save(v);
+            e.value = v;
+            toast(`${e.label}: ${v || "(blank)"} ✓`, 1600);
+            if (VW.index < VW.list.length - 1) viewerStep(1); else updateViewerEdit();
+        };
+        bar.append(el("label", "viewer-edit-label", e.label), valueControl({ ...e, save }));
+        const ok = el("button", "viewer-pill", "✓ Right");
+        ok.type = "button";
+        ok.addEventListener("click", () => save(e.value || ""));
+        bar.appendChild(ok);
+    }
+
+    function updateViewerMove() {
+        updateViewerEdit();
+        const photo = VW.list[VW.index] || {};
+        const cap = $("viewerCaption");
+        cap.textContent = photo.caption ? String(photo.caption) : "";
+        cap.hidden = !photo.caption || VW.measuring;
         const m = photo.move ? V.moveOf(S.moves, photo.move.group.groupId, photo.move.photoId) : null;
         $("viewerCount").textContent = [photo.title, VW.list.length > 1 ? `${VW.index + 1} / ${VW.list.length}` : "", m ? `→ ${moveText(m)}` : ""].filter(Boolean).join(" · ");
         $("viewerMoveBtn").hidden = !photo.move;
@@ -680,6 +751,7 @@
         VW.ref = []; VW.len = []; VW.refMm = 0;
         $("viewerMeasureBtn").setAttribute("aria-pressed", String(on));
         $("viewerMeasure").hidden = !on;
+        if (typeof updateViewerEdit === "function") updateViewerEdit();
         if (on) updateMeasureText();
         drawViewerMarks();
     }
@@ -946,13 +1018,67 @@
             if (AI.card === data) renderAiThread(data);
         }
     }
+    const translating = new Set();
+    const textKey = t => { const x = String(t || ""); let h = 0; for (let i = 0; i < x.length; i++) h = (h * 31 + x.charCodeAt(i)) | 0; return `${x.length}:${h}`; };
+    const needsTranslation = t => /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(String(t || ""));
+    async function translateNotes(data, button) {
+        const gid = data.group.groupId;
+        if (!AI.key) { toast("Set up AI on the home screen first."); return; }
+        if (translating.has(gid)) return;
+        translating.add(gid);
+        if (button) { button.disabled = true; button.textContent = "Translating…"; }
+        const cfg = aiConfig();
+        const lang = String(cfg.translateTo || "English");
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                    "content-type": "application/json",
+                    "x-api-key": AI.key,
+                    "anthropic-version": "2026-10-21",
+                    "anthropic-beta": "server-side-fallback-2026-07-01",
+                    "anthropic-dangerous-direct-browser-access": "true"
+                },
+                body: JSON.stringify({
+                    model: String(cfg.model || AI_DEFAULT_MODEL),
+                    max_tokens: 8000,
+                    fallbacks: "default",
+                    output_config: { effort: "low" },
+                    system: `Translate the user's text into clear, natural ${lang}. Keep the order and any labels or speaker names. After each part name or specialist term, keep the original word in brackets. Keep numbers, sizes, dates, codes and file names exactly. Output only the translation, no comments.`,
+                    messages: [{ role: "user", content: [{ type: "text", text: String(data.group.notes) }] }]
+                })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(res.status === 401 ? "The AI key was not accepted." : (json.error && json.error.message) || `HTTP ${res.status}`);
+            if (json.stop_reason === "refusal") throw new Error("The AI declined this one.");
+            const text = (Array.isArray(json.content) ? json.content : []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+            if (!text) throw new Error("No translation came back.");
+            S.translations = { ...S.translations, [gid]: { text, lang, source: textKey(data.group.notes), at: new Date().toISOString() } };
+            await saveState();
+            S.showOriginal = false;
+            if (!$("sheet").hidden && $("sheetTitle").textContent === (V.itemTitle(data, S.checks) || "")) refreshSheet(data);
+        } catch (error) {
+            toast(navigator.onLine === false ? "No connection - translation needs the internet." : `Translation: ${error.message}`, 4000);
+            if (button) { button.disabled = false; button.textContent = "Translate"; }
+        } finally {
+            translating.delete(gid);
+        }
+    }
+
     $("aiForm").addEventListener("submit", e => { e.preventDefault(); askAi($("aiQuestion").value); });
     $("aiClose").addEventListener("click", () => { $("aiSheet").hidden = true; });
     $("aiSheet").addEventListener("click", e => { if (e.target === $("aiSheet")) $("aiSheet").hidden = true; });
     $("keySheet").addEventListener("click", e => { if (e.target === $("keySheet")) $("keySheet").hidden = true; });
     loadAiKey();
 
-    function openSheet(data) {
+    function refreshSheet(data) {
+        const panel = $("sheet").querySelector(".sheet-panel");
+        const top = panel ? panel.scrollTop : 0;
+        openSheet(data, true);
+        if (panel) panel.scrollTop = top;
+    }
+
+    function openSheet(data, refresh) {
         $("sheetTitle").textContent = V.itemTitle(data, S.checks) || "";
         const body = $("sheetBody");
         body.replaceChildren();
@@ -981,14 +1107,40 @@
                 img.loading = "lazy";
                 img.src = a.src;
                 b.append(img, el("span", "", a.title || `Attachment ${i + 1}`));
-                b.addEventListener("click", () => openViewer(attachments.map(x => ({ src: x.src, title: x.title || "", move: x.movable && x.id ? { group: data.group, photoId: String(x.id), from: null } : null })), i));
+                b.addEventListener("click", () => openViewer(attachments.map(x => ({ src: x.src, title: x.title || "", caption: x.caption || "", move: x.movable && x.id ? { group: data.group, photoId: String(x.id), from: null } : null })), i));
                 list.appendChild(b);
             });
             body.appendChild(list);
         }
         if (data.group.notes) {
-            body.appendChild(el("h3", "", data.group.noteTitle || "Notes"));
-            body.appendChild(el("p", "note-text long", String(data.group.notes)));
+            const own = S.translations[data.group.groupId];
+            const sameText = own && own.source === textKey(data.group.notes);
+            const alt = data.group.notesAlt && data.group.notesAlt.text ? data.group.notesAlt
+                : sameText ? { label: `${own.lang || "English"} (AI)`, text: own.text } : null;
+            const head = el("div", "fields-head");
+            head.appendChild(el("h3", "", data.group.noteTitle || "Notes"));
+            const text = el("p", "note-text long", "");
+            const show = original => {
+                S.showOriginal = original;
+                text.textContent = String(alt && !original ? alt.text : data.group.notes);
+                if (toggle) toggle.textContent = original ? (alt.label || "Translation") : "Original";
+            };
+            let toggle = null;
+            if (alt) {
+                toggle = el("button", "viewer-pill field-ok", "");
+                toggle.type = "button";
+                toggle.addEventListener("click", () => show(!S.showOriginal));
+                head.appendChild(toggle);
+            }
+            if (!alt && needsTranslation(data.group.notes)) {
+                const tr = el("button", "viewer-pill field-ok", AI.key ? "Translate" : "Translate (set up AI)");
+                tr.type = "button";
+                tr.addEventListener("click", () => translateNotes(data, tr));
+                head.appendChild(tr);
+                if (AI.key && !translating.has(data.group.groupId)) translateNotes(data, tr);
+            }
+            body.append(head, text);
+            show(alt ? Boolean(S.showOriginal) : true);
         }
         const others = S.cards.filter(c => c.group.groupId === data.group.groupId && c !== data);
         if (others.length) {
@@ -1002,48 +1154,150 @@
                 body.appendChild(row);
             }
         }
+        const wasOpen = !$("sheet").hidden;
         $("sheet").hidden = false;
-        $("sheetClose").focus();
+        if (!refresh && !wasOpen) {
+            const panel = $("sheet").querySelector(".sheet-panel");
+            if (panel) panel.scrollTop = 0;
+            $("sheetClose").focus({ preventScroll: true });
+        }
     }
-    let datalistSeq = 0;
+    const norm = v => String(v ?? "").normalize("NFKC").trim().toLowerCase();
+
+    function openListPicker(title, options, current, onPick, extras) {
+        const body = $("moveBody");
+        body.replaceChildren();
+        const search = document.createElement("input");
+        search.type = "search";
+        search.className = "field-input list-search";
+        search.placeholder = "Search…";
+        search.setAttribute("aria-label", `Search ${title}`);
+        const list = el("div", "list-pick");
+        const choose = async value => { $("moveSheet").hidden = true; await onPick(value); };
+        const top = (extras || []).filter(x => x && x.value);
+        const draw = () => {
+            const q = norm(search.value);
+            list.replaceChildren();
+            const seen = new Set();
+            const add = (label, value, sub) => {
+                if (seen.has(value)) return;
+                seen.add(value);
+                const b = el("button", `move-opt${value === current ? " on" : ""}`);
+                b.type = "button";
+                b.append(el("span", "", label));
+                if (sub) b.appendChild(el("small", "", sub));
+                b.addEventListener("click", () => choose(value));
+                list.appendChild(b);
+            };
+            if (!q) for (const x of top) add(x.value, x.value, x.sub);
+            const matches = options.filter(o => !q || norm(o).includes(q));
+            for (const o of matches.slice(0, 80)) add(o, o, o === current ? "Current" : "");
+            if (q && !matches.length) list.appendChild(el("p", "hint", "Nothing on the list matches."));
+        };
+        search.addEventListener("input", draw);
+        body.append(search, list);
+        draw();
+        $("moveTitle").textContent = title;
+        $("moveSheet").hidden = false;
+    }
+
+    function valueControl({ type, value, dateValue, options, inputMode, label, save, listTitle, extras }) {
+        if (type === "date") {
+            const input = document.createElement("input");
+            input.type = "date";
+            input.className = "field-input";
+            input.value = /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : (dateValue || "");
+            input.setAttribute("aria-label", label);
+            input.addEventListener("change", () => { if (input.value) save(input.value); });
+            return input;
+        }
+        const list = options && S.pack.options && Array.isArray(S.pack.options[options]) ? S.pack.options[options] : null;
+        if (list && list.length) {
+            const b = el("button", "field-input field-pick", value || "Choose…");
+            b.type = "button";
+            b.setAttribute("aria-label", `${label}: ${value || "not set"} - change`);
+            b.addEventListener("click", () => openListPicker(listTitle || label, list, value, save, extras));
+            return b;
+        }
+        const input = document.createElement("input");
+        input.className = "field-input";
+        input.value = value || "";
+        input.placeholder = "(blank)";
+        input.autocomplete = "off";
+        input.enterKeyHint = "done";
+        if (inputMode) input.inputMode = inputMode;
+        input.setAttribute("aria-label", label);
+        const commit = () => { if (input.value.trim() !== String(value || "").trim()) save(input.value.trim()); };
+        input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); input.blur(); } });
+        input.addEventListener("change", commit);
+        return input;
+    }
+
     function renderItemValues(body, data) {
         const defs = (Array.isArray(S.pack.itemFields) ? S.pack.itemFields : []).filter(d => d && d.id);
         if (!defs.length || !data.item.values) return;
         body.appendChild(el("h3", "", S.pack.itemFieldsTitle || "Correct this card"));
         const box = el("div", "item-values");
+        const hint = data.item.hint;
+        const setValue = async (fieldId, value) => {
+            const original = String((data.item.values || {})[fieldId] ?? "").trim();
+            S.checks = V.setFieldCheck(S.checks, { groupId: data.group.groupId, fieldId, itemIndex: data.item.itemIndex, value: String(value).trim() === original ? null : value });
+            await saveState();
+            buzz(8);
+            refreshSheet(data);
+        };
+        if (hint && (hint.text || hint.image)) {
+            const h = el("div", "hint-box");
+            if (typeof hint.image === "string" && hint.image.startsWith("data:image/")) {
+                const pic = el("button", "field-pic");
+                pic.type = "button";
+                pic.setAttribute("aria-label", "Zoom the mark on the form");
+                const img = new Image();
+                img.alt = "";
+                img.src = hint.image;
+                pic.appendChild(img);
+                pic.addEventListener("click", () => openViewer([{ src: hint.image, title: hint.title || "" }], 0));
+                h.appendChild(pic);
+            }
+            const t = el("div", "hint-text");
+            t.append(el("small", "", [hint.title || "The other side says", hint.source].filter(Boolean).join(" · ")), el("span", "", hint.text || ""));
+            h.appendChild(t);
+            const hv = hint.values || {};
+            const differs = defs.some(d => hv[d.id] && hv[d.id] !== V.itemValue(S.checks, data, d.id));
+            if (differs) {
+                const use = el("button", "viewer-pill hint-use", "Use");
+                use.type = "button";
+                use.setAttribute("aria-label", `Use: ${defs.map(d => hv[d.id]).filter(Boolean).join(" · ")}`);
+                use.addEventListener("click", async () => {
+                    for (const d of defs) {
+                        if (!hv[d.id]) continue;
+                        const original = String((data.item.values || {})[d.id] ?? "").trim();
+                        S.checks = V.setFieldCheck(S.checks, { groupId: data.group.groupId, fieldId: d.id, itemIndex: data.item.itemIndex, value: hv[d.id] === original ? null : hv[d.id] });
+                    }
+                    await saveState();
+                    buzz(8);
+                    refreshSheet(data);
+                });
+                h.appendChild(use);
+            }
+            box.appendChild(h);
+        }
         for (const d of defs) {
             const check = V.fieldCheckOf(S.checks, data.group.groupId, d.id, data.item.itemIndex);
+            const value = V.itemValue(S.checks, data, d.id);
             const row = el("div", `item-value${check ? " checked" : ""}`);
-            const id = `iv-${++datalistSeq}`;
-            const label = el("label", "field-label", d.label || d.id);
-            label.htmlFor = id;
-            const input = document.createElement("input");
-            input.id = id;
-            input.className = "field-input";
-            input.value = V.itemValue(S.checks, data, d.id);
-            input.autocomplete = "off";
-            const options = S.pack.options && Array.isArray(S.pack.options[d.options]) ? S.pack.options[d.options] : [];
-            if (options.length) {
-                const list = document.createElement("datalist");
-                list.id = `${id}-list`;
-                for (const o of options.slice(0, 1500)) { const opt = document.createElement("option"); opt.value = String(o); list.appendChild(opt); }
-                input.setAttribute("list", list.id);
-                row.appendChild(list);
+            const head = el("div", "field-head");
+            head.appendChild(el("span", "field-label", d.label || d.id));
+            if (check) {
+                const undo = el("button", "link-btn", `Undo (was ${String((data.item.values || {})[d.id] || "blank")})`);
+                undo.type = "button";
+                undo.addEventListener("click", () => setValue(d.id, String((data.item.values || {})[d.id] ?? "")));
+                head.appendChild(undo);
             }
-            const ok = el("button", "viewer-pill field-ok", check ? "Undo" : "OK");
-            ok.type = "button";
-            ok.addEventListener("click", async () => {
-                const original = String((data.item.values && data.item.values[d.id]) ?? "").trim();
-                const value = input.value.trim();
-                S.checks = V.setFieldCheck(S.checks, { groupId: data.group.groupId, fieldId: d.id, itemIndex: data.item.itemIndex, value: check || value === original ? null : value });
-                await saveState();
-                buzz(8);
-                openSheet(data);
-            });
-            const line = el("div", "field-line");
-            line.append(input, ok);
-            row.append(label, line);
-            if (check) row.appendChild(el("small", "field-note", `Was: ${String((data.item.values || {})[d.id] || "(blank)")}`));
+            const hv = hint && hint.values && hint.values[d.id];
+            row.append(head, valueControl({ type: d.type, value, options: d.options, label: d.label || d.id, listTitle: d.label || d.id,
+                extras: [hv ? { value: hv, sub: hint.title || "Suggested" } : null, value ? { value, sub: "Current" } : null],
+                save: v => setValue(d.id, v) }));
             box.appendChild(row);
         }
         body.appendChild(box);
@@ -1054,47 +1308,64 @@
         const g = data.group;
         const fields = (Array.isArray(g.fields) ? g.fields : []).filter(f => f && f.id);
         if (!fields.length && !g.fieldsNote) return;
-        body.appendChild(el("h3", "", g.fieldsTitle || "Values"));
+        const head = el("div", "fields-head");
+        head.appendChild(el("h3", "", g.fieldsTitle || "Values"));
+        const open = fields.filter(f => f.status !== "done" && !V.fieldCheckOf(S.checks, g.groupId, f.id));
+        if (open.length > 1) {
+            const all = el("button", "viewer-pill field-ok", `All OK (${open.length})`);
+            all.type = "button";
+            all.addEventListener("click", async () => {
+                for (const f of open) S.checks = V.setFieldCheck(S.checks, { groupId: g.groupId, fieldId: f.id, value: String(f.value || "") });
+                await saveState();
+                buzz(8);
+                refreshSheet(data);
+            });
+            head.appendChild(all);
+        }
+        body.appendChild(head);
         if (g.fieldsNote) body.appendChild(el("p", "note-text", String(g.fieldsNote)));
-        const imgs = fields.filter(f => typeof f.image === "string" && f.image.startsWith("data:image/"));
+        const saveField = async (f, value) => {
+            S.checks = V.setFieldCheck(S.checks, { groupId: g.groupId, fieldId: f.id, value });
+            await saveState();
+            buzz(8);
+        };
+        const currentOf = f => { const c = V.fieldCheckOf(S.checks, g.groupId, f.id); return c ? c.value : String(f.value || ""); };
+        const withImg = fields.filter(f => typeof f.image === "string" && f.image.startsWith("data:image/"));
+        const viewerList = () => withImg.map(f => ({ src: f.image, title: f.label || f.id,
+            edit: { label: f.label || f.id, type: f.type, options: f.options, inputMode: f.inputMode, dateValue: f.dateValue,
+                value: currentOf(f), save: async v => { await saveField(f, v); } } }));
         for (const f of fields) {
             const check = V.fieldCheckOf(S.checks, g.groupId, f.id);
             const row = el("div", `field-row${check ? " checked" : ""}`);
             if (typeof f.image === "string" && f.image.startsWith("data:image/")) {
                 const pic = el("button", "field-pic");
                 pic.type = "button";
-                pic.setAttribute("aria-label", `Zoom: ${f.label || f.id}`);
+                pic.setAttribute("aria-label", `Zoom and correct: ${f.label || f.id}`);
                 const img = new Image();
                 img.alt = "";
                 img.src = f.image;
                 pic.appendChild(img);
-                pic.addEventListener("click", () => openViewer(imgs.map(x => ({ src: x.image, title: x.label || x.id })), imgs.indexOf(f)));
+                pic.addEventListener("click", () => openViewer(viewerList(), withImg.indexOf(f), () => refreshSheet(data)));
                 row.appendChild(pic);
             }
-            const head = el("div", "field-head");
-            const status = check ? "checked" : (f.status || "check");
-            const pill = el("span", `field-status ${status}`, check ? "Checked" : (f.statusText || FIELD_STATUS[f.status] || FIELD_STATUS.check));
-            head.append(el("label", "field-label", f.label || f.id), pill);
-            const inputId = `fld-${String(g.groupId).replace(/\W/g, "")}-${String(f.id).replace(/\W/g, "")}`;
-            head.querySelector("label").htmlFor = inputId;
-            const input = document.createElement("input");
-            input.id = inputId;
-            input.className = "field-input";
-            input.value = check ? check.value : String(f.value || "");
-            input.placeholder = "(blank)";
-            input.autocomplete = "off";
-            const ok = el("button", "viewer-pill field-ok", check ? "Undo" : "OK");
+            const text = el("div", "field-text");
+            const fh = el("div", "field-head");
+            fh.append(el("span", "field-label", f.label || f.id),
+                el("span", `field-status ${check ? "checked" : (f.status || "check")}`, check ? "Checked" : (f.statusText || FIELD_STATUS[f.status] || FIELD_STATUS.check)));
+            const line = el("div", "field-line");
+            line.appendChild(valueControl({ type: f.type, value: currentOf(f), dateValue: f.dateValue, options: f.options, inputMode: f.inputMode,
+                label: f.label || f.id, save: async v => { await saveField(f, v); refreshSheet(data); } }));
+            const ok = el("button", "viewer-pill field-ok", check ? "Undo" : "✓");
             ok.type = "button";
+            ok.setAttribute("aria-label", check ? `Undo ${f.label || f.id}` : `${f.label || f.id} is right`);
             ok.addEventListener("click", async () => {
-                S.checks = V.setFieldCheck(S.checks, { groupId: g.groupId, fieldId: f.id, value: check ? null : input.value });
+                S.checks = V.setFieldCheck(S.checks, { groupId: g.groupId, fieldId: f.id, value: check ? null : String(f.value || "") });
                 await saveState();
                 buzz(8);
-                openSheet(data);
+                refreshSheet(data);
             });
-            const line = el("div", "field-line");
-            line.append(input, ok);
-            const text = el("div", "field-text");
-            text.append(head, line);
+            line.appendChild(ok);
+            text.append(fh, line);
             if (f.note) text.appendChild(el("small", "field-note", String(f.note)));
             row.appendChild(text);
             body.appendChild(row);
