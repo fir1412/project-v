@@ -532,6 +532,32 @@
         return (nonBoss.length ? nonBoss : inAct).slice(0, n);
     }
 
+    // The story moves one chapter per finished tale, then begins again on a new night.
+    const CHAPTERS = [
+        ["The Lantern Wakes", "An old lantern hangs on a post at the edge of the lot. When you lift it, it lights by itself, and a girl's voice says your name."],
+        ["Small Teeth", "The Defects are small, and there are many. They gnaw paint, loosen bolts and hide in the gaps. Yui says they only fear being seen."],
+        ["The Sovereign's Gate", "At the end of the Moon Road stands a gate of fog. Something wearing a crown of crescent moons waits behind it, and it has been waiting a long time."],
+        ["Salt and Rain", "Past the gate, the road sinks into the sea. Rain falls sideways. Every car in the Drowned Yard is half under water and wholly watched."],
+        ["A Lighthouse That Does Not Turn", "The Hollow Lamplighter keeps the lighthouse dark. Yui remembers when it turned. She does not say how she remembers."],
+        ["The Rust Orchard", "Inland, trees grow out of old chassis. The leaves are flakes of rust and they rattle when nothing moves. Something prunes them."],
+        ["The Thorn Regent's Court", "The Regent holds court among the bent branches, crowned in nails. It collects the cars no one looked at closely."],
+        ["Night Market", "A market of windscreens and mirrors, open only after moonrise. Every stall shows you a little more than you asked to see."],
+        ["What the Mirrors Keep", "The Mirror Queen keeps every reflection the lot has ever made. In one of them, Yui is holding a lantern too."],
+        ["Where the Moon Went", "At the end of every road is a depot where the moon has gone out. Your lantern is the only light left, and Yui's voice is very quiet."],
+        ["The Moonless King", "The King has no face, only a black moon. He made the Defects from every look that was too quick. He cannot stand being seen."],
+        ["Dawn", "The moon rises again over the lot, pale and whole. Yui laughs for the first time. Tomorrow there will be new cars, and new things hiding on them."]
+    ];
+    const chapterOf = runs => { const n = Math.max(0, runs || 0); return { n: n + 1, night: Math.floor(n / CHAPTERS.length) + 1, title: CHAPTERS[n % CHAPTERS.length][0], text: CHAPTERS[n % CHAPTERS.length][1] }; };
+    // A gift at the start of a tale: three of these, picked by the pack.
+    const BOONS = {
+        oil: { name: "Lantern Oil", text: "Start with 4 Light" },
+        purse: { name: "Moon Purse", text: "Start with 30 moonshards" },
+        whet: { name: "Whetstone Gift", text: "Upgrade 2 random cards" },
+        relic: { name: "Old Relic", text: "Start with a random relic" },
+        rare: { name: "Wandering Card", text: "Add a rare card from your hero's family" },
+        clear: { name: "Clear Mind", text: "Burn a random starter card and gain 10 shards" }
+    };
+    const boonChoices = seed => shuffle(rng(seed), Object.keys(BOONS)).slice(0, 3);
     // One omen per calendar day, the same for everyone that day; applies to tales started that day.
     const OMENS = {
         silver: { name: "Silver Night", text: "Foes drop 50% more moonshards" },
@@ -597,7 +623,295 @@
         kindling: "Every spark feeds the next.", purge: "Less to carry, more to see.", afterglow: "The light lingers on the careful.",
         chain: "One look leads to the next.", forge: "Hammer the plain into the rare.", overflow: "A full lantern still spills light."
     };
-    const rules = { weekKey, REGIONS, BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
+    // Pale Moon 11 cards.
+    Object.assign(FLAVOR, {
+        glint: "A wink of chrome is how they give themselves away.",
+        squint: "Closer. The moon hides things in plain sight.",
+        patient: "The third look is where the truth lives.",
+        wideangle: "Step back and the whole car tells one story.",
+        moonlens: "Ground from a fallen moonbeam, they say.",
+        afterimage: "What you saw keeps glowing a moment longer.",
+        crosslight: "Two lights, and nothing has a shadow to hide in.",
+        owlsight: "The owl looks at everything before it moves once.",
+        stillwater: "Calm hands, calm lantern, clear eyes.",
+        tracer: "Follow the line of light and it ends at a Defect.",
+        pinhole: "A small hole lets in a whole sky.",
+        vigil: "Stay with it. The night gets tired before you do.",
+        silverplate: "Elders leave a mark on silver they cannot hide.",
+        halation: "A bright lantern blooms; so does a careful eye.",
+        parallax: "Move your head. The flaw moves differently from the paint.",
+        eyeofmoon: "The moon sees every side at once. Now so do you.",
+        negative: "Light where it was dark. Dark where it lied.",
+        starmap: "Every photo a star; together, a way home.",
+        dewdrop: "Morning will come. Until then, the dew remembers.",
+        blink: "You saw it all before you blinked.",
+        longexposure: "Hold still long enough and the night writes itself down.",
+        moth: "Too much light draws company.",
+        aperture: "Open wide. Let all of it in.",
+        seconddawn: "The road gets a second morning if you look again.",
+        glasseye: "It never blinks, never tires, never misses.",
+        develop: "In the dark room, what you saw comes up slowly.",
+        contact: "A whole night's photos on one sheet of moonlight.",
+        exposure: "One flash, and the shadows lose their nerve.",
+        darkroom: "Red light, quiet hands, and every picture remembered.",
+        flashbulb: "Pop. Every Defect in the lot freezes.",
+        reframe: "Same car. Better picture.",
+        lanternlens: "Glass in front of fire: the seer's oldest trick.",
+        focuspull: "Soft, then sharp. There it is.",
+        moonbath: "Stand in the full moon and everything shines double.",
+        sharpshot: "First look, best look.",
+        wideeyed: "Some nights you forget to blink.",
+        nightvision: "Your eyes learned the dark a long time ago.",
+        seersmark: "The mark of one who has truly seen.",
+        glimpse: "Even one look is better than none.",
+        moonpool: "The big ones leave the deepest reflections.",
+        spectacle: "Read it, then look again. The page points the way.",
+        oculus: "A round window in the roof of the night.",
+        marginalia: "The best notes are the small ones in the margins.",
+        tally: "One stroke at a time, the night is counted.",
+        errata: "A second check finds what the first one trusted.",
+        footnote: "The small print is where the story hides.",
+        ledgerline: "Every number gets a line of its own.",
+        annotate: "See it, then say what you saw.",
+        cipher: "Ask the oracle; read its answer twice.",
+        crossref: "Two sources agree. Now you can write it down.",
+        signet: "Pressed twice, the seal never lies.",
+        palimpsest: "Under the old writing, the new truth.",
+        archive: "Every foe filed, every page kept.",
+        inkwell: "Dip, write, and the shards fall out of the ink.",
+        quillstroke: "A clean stroke lights the page.",
+        rubric: "Red ink for the parts that matter.",
+        colophon: "The last line of the book names who wrote it true.",
+        scriptorium: "The elders get the slow, careful hand.",
+        concordance: "When every source agrees, the page sings.",
+        vellum: "Fine skin for fine print on a fine foe.",
+        gloss: "A word of explanation in a careful hand.",
+        redink: "Corrections are a kind of courage.",
+        bookmark: "You left a ribbon here. Come back to it.",
+        index: "Everything in its place, every place in the index.",
+        almanac: "The great foes are written up in the almanac.",
+        epigraph: "Begin the chapter with the details.",
+        transcript: "Write down what the oracle said, word for word.",
+        proofread: "Once more, slowly. Then once more.",
+        sealedletter: "Inside: shards and a short, polite note.",
+        copyist: "A faithful copy is worth the original.",
+        library: "Four shelves, a ladder, and all night.",
+        treatise: "A long book on a short subject: looking properly.",
+        inkstorm: "Every checked value rains a little ink.",
+        edict: "By order of the Scribe, that trait is struck out.",
+        blotter: "Press it down and the ink stays sharp.",
+        chronicle: "The night, written down from the first foe to the last.",
+        scrivener: "Numbers first, then the long careful read.",
+        margins: "Leave room on the page for the truth.",
+        calligraphy: "Beautiful hands make fewer mistakes.",
+        lexicon: "Every word known, every word right.",
+        postscript: "P.S. The last one counts too.",
+        sealwax: "Warm red wax, pressed with the night's work.",
+        candlenotes: "Read by candlelight, after a close look.",
+        stamp: "Checked, stamped, filed. Before anything else.",
+        watchfire: "Light the fire before the dark comes close.",
+        bulwark: "Nothing gets past. Nothing ever has.",
+        sentinel: "Two cards down, eyes still up.",
+        rampart: "A wall of light is still a wall.",
+        lastlight: "The last lantern standing is yours.",
+        bellringer: "Four strikes and the whole yard hears it.",
+        vanguard: "First in, eyes open.",
+        oathkeeper: "You promised the big ones would fall.",
+        hearth: "Every spell you cast warms the camp a little.",
+        standard: "Five cards played and the banner still flies.",
+        lanternpost: "Hang a lantern and the road behaves.",
+        shieldwall: "Eight lanterns, shoulder to shoulder.",
+        warcry: "Shout it so the Defects hear you coming.",
+        finalstand: "The boss falls, and the night goes quiet.",
+        tower: "From up here you can see every lantern burn.",
+        ember: "Even a full lantern keeps a coal.",
+        bastion: "Ten lights. Not one shadow.",
+        vow: "Seen whole, ended whole.",
+        gatekeeper: "The last gate opens only for the Warden.",
+        torchbearer: "Hold the light closer.",
+        rearguard: "Someone has to go back for the ones left behind.",
+        steadfast: "Three cards, two photos, one steady heart.",
+        dawnguard: "The first blow on a giant is the bravest.",
+        patrol: "Round and round the lot, all night.",
+        beacon: "Burn bright and the road finds you.",
+        rallycry: "Up! The night's not over.",
+        bastionrite: "What light you keep becomes your strength.",
+        charge: "Lanterns up, forward!",
+        vigilance: "Watch closely and the spoils double.",
+        lanternwall: "Each card a brick, each brick a light.",
+        signalfire: "Seen from every hill on the Moon Road.",
+        muster: "Gather close. The next blow lands true.",
+        ironvow: "Said once, done twice.",
+        brazier: "A big fire for a first meeting.",
+        keep: "Behind thick walls, even elites look small.",
+        guardpost: "Stand here. Look there.",
+        ward: "The moon's own circle around your lantern.",
+        unbroken: "The great one falls, and you never looked away.",
+        sentry: "Something moved. You were ready.",
+        bonfire: "Five cards on the fire and the night roars.",
+        lampwick: "Trim the wick, the light comes back.",
+        gauntlet: "Throw it down before the big ones.",
+        stride: "Every fork in the road is a choice. Choose well.",
+        waymark: "Chalk a mark on the first car you meet.",
+        coinpurse: "Light purse, heavy heart. Heavy purse, light heart.",
+        milestone: "Three foes down; the stones count for you.",
+        crossroads: "Someone always drops coins where roads meet.",
+        campfire: "The best tales are told sitting down.",
+        wanderlust: "Three paths and you're only getting started.",
+        heavypack: "Shards weigh nothing. The night is heavy.",
+        roadsong: "Hum while you look. The road likes it.",
+        lodestar: "One star doesn't move. Walk toward it.",
+        pilgrim: "Every stop on the road is a shrine.",
+        signpost: "The sign points to whatever you need to see.",
+        caravan: "A full pack and a long road ahead.",
+        toll: "The big ones pay to pass.",
+        dustymap: "The old map knows the place. Read it.",
+        farhorizon: "Further than you meant to go. Good.",
+        trailmix: "Dried fruit and moonlight. Enough for a night.",
+        nomad: "Never the same road twice, never in the dark.",
+        hoard: "Sixty shards jingling and still looking closely.",
+        bridge: "Cross back for the ones you left.",
+        compassrose: "Five ways walked, the rose opens.",
+        innkeeper: "A second stop, and they know your name.",
+        footsore: "Tired feet, finished foe, a few shards for the trouble.",
+        moonroad: "The road gets stranger past the orchard.",
+        tinker: "Pots, pans, and a little lantern oil.",
+        guide: "Every photo seen, every shard earned.",
+        ferryman: "He takes coin to cross; he pays coin to the brave.",
+        homeward: "The boss falls and your pack is full. Home.",
+        shortcut: "The quick way round still sees everything.",
+        barter: "Two buttons for a shard. A fair trade.",
+        spendthrift: "Shards are for spending on yourself.",
+        pathfinder: "Feel for the road with your feet.",
+        goldenmile: "Every foe tonight left a coin on the road.",
+        roadmap: "Every path you chose, drawn in amber.",
+        lucky: "Heads, the next one crits. Tails, also.",
+        journey: "It was never about the destination.",
+        payday: "The road pays double tonight.",
+        detour: "The long way twice, and coins on both sides.",
+        weatherwise: "When the lantern overflows, sell the spare light.",
+        pathworn: "Boots that know two roads already.",
+        emberroad: "A stop by the fire, and a story worth fifty.",
+        wayshrine: "Light a candle where the foe fell.",
+        stargazer: "Look up after looking close.",
+        temper: "One good card makes the rest behave.",
+        quench: "Hiss. Hard as moonlight.",
+        slag: "What's left after the fire is still worth something.",
+        anvilsong: "Three tempered cards ring like a bell.",
+        bellows: "Every spell feeds the forge.",
+        filings: "Sweep the floor. There's iron in the dust.",
+        annealing: "Slow heat, slow cool, strong card.",
+        hallmark: "Five marks of quality and a moon stamp.",
+        crucible: "In the pot, everything becomes something new.",
+        masterwork: "Eight cards that could not be better.",
+        rivet: "Check it, tap it, set it.",
+        whitehot: "Heat and light are the same thing at the forge.",
+        lean: "Fewer cards, sharper hand.",
+        honed: "An edge you could shave the moon with.",
+        forgefire: "Every upgrade feeds the fire.",
+        ashes: "Third card in the fire, and something rises.",
+        assay: "Look at the metal before you trust it.",
+        moonsteel: "Ten tempered cards. Unbreakable.",
+        smeltery: "Two cards melted down, and the foe falls hard.",
+        tongs: "Hold it close, look closer.",
+        ingot: "A foe's remains, cast into a neat bar.",
+        whetted: "The first cut is always the cleanest.",
+        tempered: "Strong deck, steady eyes, every photo.",
+        starmetal: "Iron that fell from the sky, still warm.",
+        sparks: "Strike once and the forge lights up.",
+        refine: "A tempered deck reads more carefully.",
+        goldleaf: "A thin layer of gold on a checked number.",
+        greatwork: "The Moonsmith's masterpiece is the whole deck.",
+        hammer: "One blow, one better card.",
+        smelt: "Melt it down, start again, keep the change.",
+        doubleforge: "Two anvils, two hammers, two better cards.",
+        recast: "Same metal, rarer shape.",
+        heatwave: "Every tempered card radiates warmth.",
+        melt: "Burn it for the light it held.",
+        goldsmith: "Gold for the card, gold for you.",
+        phoenix: "From each burned card, something brighter.",
+        starforge: "Forged under a falling star. Three at once.",
+        anvilstrike: "Strike hard, strike once, strike gold.",
+        cinder: "Spare light goes into the forge.",
+        forgemaster: "A master's hand on every spell.",
+        brand: "Marked by the forge, the foe falls.",
+        mould: "Pour it in, let it set, sell the spare.",
+        silversmith: "Even ash has a silver lining.",
+        tracker: "Two photos, two tracks. You know where it went.",
+        snare: "Set the wager like a trap.",
+        trophy: "The big ones belong on the wall.",
+        stalk: "Quietly, patiently. The wager holds.",
+        quarry: "Mark the strong one. Study it.",
+        pelt: "An unbroken wager makes a fine pelt.",
+        pounce: "First strike on the giant.",
+        bloodmoon: "When the stake is set, the moon turns red.",
+        hound: "The moonhound smells an elite a mile off.",
+        lure: "Every photo seen, and the wager still holds.",
+        apex: "Nothing bigger on this road.",
+        arrow: "Silver for the things that hide.",
+        spoor: "Read the tracks like a page.",
+        ambush: "They never see the first one coming.",
+        highstakes: "Big foe, big stake, steady hands.",
+        taxidermy: "This one goes over the fireplace.",
+        moonbow: "Drawn by moonlight, loosed at the strong.",
+        pack: "Hunt together, hunt the big ones.",
+        scentmark: "Close enough to smell the rust.",
+        deadeye: "Every photo, a zoom, a wager kept. Perfect.",
+        wolfmoon: "Stake it all on the alpha.",
+        crown: "Only the patient hunter wears it.",
+        fang: "One more for the necklace.",
+        bravado: "Bet loud, look quietly.",
+        thicket: "Read the brush before you step in.",
+        tusks: "A lucky charm for a held wager.",
+        nightstalker: "The elite never knew you were there.",
+        huntersmoon: "Full moon, full quiver.",
+        mark: "Paint the prey; the road pays for it.",
+        gambit: "The moon stakes for you. Don't let her down.",
+        volley: "Two arrows, one breath.",
+        trap: "Snap. Its tricks are done.",
+        bait: "A few shards on the ground. They always come.",
+        killshot: "Mark it, then make it count.",
+        allin: "Twenty shards on the table. Look closely.",
+        hunt: "Every card a step closer to the kill.",
+        fletch: "Three new arrows, straight and true.",
+        trophywall: "Every foe tonight on one long wall.",
+        feint: "Look one way, strike the other.",
+        snarewire: "Check the wire before the big one steps in.",
+        houndsnose: "The details smell like Defect.",
+        lastarrow: "Save the last arrow for the strongest.",
+        chase: "The road forks; the hunt goes on.",
+        moonshard: "A small piece of the moon, left behind.",
+        nightowl: "Owls see and read in the dark.",
+        candle: "Every verdict lights a little candle.",
+        lullaby: "Go back for the ones you set aside. Sing softly.",
+        pathlight: "A lantern at every fork.",
+        restful: "Sit by the fire a while.",
+        whisper: "The oracle whispers; you listen.",
+        ripple: "Two cards and a closer look make waves.",
+        moonflower: "It blooms only after a careful look.",
+        fireflies: "Too much light, so it scatters into fireflies.",
+        mothwing: "Read, then look, light as a moth.",
+        tidewater: "The sea keeps the details for those who read.",
+        glasschime: "In the Glass Market every look rings.",
+        rustbloom: "Even rust flowers if you look closely.",
+        eclipse: "Where the moon goes out, the brave walk on.",
+        lanternoil: "A little oil and the night goes on.",
+        stardust: "Shake the sky and shards fall out.",
+        moonwell: "Draw from the well; draw again.",
+        wish: "Make one. It might come true.",
+        cometail: "A long bright tail of echoes.",
+        hush: "Quiet, and the next blow lands true.",
+        tide: "The night turns your way.",
+        lantern2: "It has seen a hundred nights. It will see this one.",
+        feather: "A gift from the owl who reads.",
+        silverthread: "Every checked number is a stitch.",
+        moonlit: "Five lights and every photo, silver bright.",
+        deepnight: "In the deepest part of the night, look the closest.",
+        dawnchorus: "The birds sing when the elite falls.",
+        allseeing: "Nothing escapes you. Nothing ever will.",
+        graveyard: "Five foes down and the shift is not over."
+    });
+    const rules = { CHAPTERS, chapterOf, BOONS, boonChoices, weekKey, REGIONS, BOUNTIES, bountyOf, FLAVOR, OMENS, dayKey, omenOf, streakOf, ACHIEVEMENTS, LANTERNS, hash, rng, shuffle, CARDS, RELICS, TRAITS, traitOf, STARTER, CLASSES, SPECIES, speciesOf, BASE_XP, levelOf, need, rankOf, cardGain, costOf, lightCap, gradeOf, eventAfter, pathChoices, buildMap, newRun, drawOne, refillHand, discardHand, playCard, addCard, removeCard, rewardChoices, handSize };
     root.PaleMoonRules = rules;
     if (typeof module !== "undefined" && module.exports) module.exports = rules;
     if (typeof document === "undefined") return;
@@ -1394,6 +1708,11 @@
         const om = run.omen && OMENS[run.omen];
         body.append(h("p", "g-lore", text), ...(om ? [h("p", "g-omen", `Tonight's omen · ${om.name}: ${om.text}`)] : []), heroes, routeEl(),
             h("p", "g-fine", "Every verdict strikes the same blow, whatever you choose. Cards reward looking closely: flipping photos, zooming, reading details, checking values. Choose what's true."));
+        if (run.chapter === undefined) run.chapter = meta.runs || 0;
+        const ch = chapterOf(run.chapter);
+        const chap = h("div", "g-chapter");
+        chap.append(h("p", "g-chapter-kicker", `Chapter ${ch.n}${ch.night > 1 ? ` · Night ${ch.night}` : ""}`), h("p", "g-chapter-title", ch.title), h("p", "g-chapter-text", ch.text));
+        body.prepend(chap);
         panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Begin", primary: true, onClick: () => {
             audio(); mood();
             // The hand was dealt before the class was chosen; deal it again from the chosen deck.
@@ -1402,10 +1721,36 @@
                 run.discard = []; run.hand = []; run.foe = null;
                 sync();
             }
+            if (!run.boon) enqueue(boonOverlay);
             queuePath();
         } }] });
         pickHero(run.hero || "seer");
         say(spoken, true);
+    }
+    function boonOverlay() {
+        const body = h("div", "g-body");
+        const row = h("div", "g-relic-pick");
+        const give = id => {
+            run.boon = id;
+            if (id === "oil") earnLight(4);
+            if (id === "purse") run.scrap += 30;
+            if (id === "whet") shuffle(Math.random, run.deck).slice(0, 2).forEach(c => { c.up = true; });
+            if (id === "relic") { const r = shuffle(Math.random, Object.keys(RELICS).filter(x => !run.relics.includes(x)))[0]; if (r) run.relics.push(r); }
+            if (id === "rare") { const pool = Object.keys(CARDS).filter(x => CARDS[x].hero === run.hero && CARDS[x].unlock >= 2 && CARDS[x].unlock <= level() + 2); if (pool.length) addCard(run, pick(Math.random, pool), false); }
+            if (id === "clear" && run.deck.length > 3) { removeCard(run, pick(Math.random, run.deck).uid); run.scrap += 10; }
+            sfx("relic"); haptic(HAPTIC.pick); saveRun(); renderHud(); renderHand();
+        };
+        for (const id of boonChoices(hash(`${run.packId}|boon`))) {
+            const b = h("button", "g-relic");
+            b.type = "button";
+            const ic = h("span", "g-relic-icon");
+            ic.append(h("span", "g-initial", BOONS[id].name[0]), art({ oil: "ui/relic-lamp", purse: "ui/relic-pouch", whet: "cards/whet", relic: "ui/relic-compass", rare: "cards/wind", clear: "cards/purge" }[id], "", ""));
+            b.append(ic, h("span", "g-relic-name", BOONS[id].name), h("span", "g-relic-text", BOONS[id].text));
+            b.addEventListener("click", () => { give(id); nextOverlay(); });
+            row.appendChild(b);
+        }
+        body.append(h("p", "g-lore", "Before the road, Yui holds out three gifts. Take one."), row);
+        panel({ kicker: "A gift for the road", title: "Choose a boon", body, actions: [{ label: "No gift", onClick: () => { run.boon = "none"; saveRun(); } }] });
     }
     function mapOverlay() {
         const body = h("div", "g-body");
@@ -1544,6 +1889,19 @@
         sfx("page");
     }
     function eventOverlay(type) { run.eventsSeen = (run.eventsSeen || 0) + 1; moment("event"); (type === "camp" ? campOverlay : type === "shop" ? shopOverlay : type === "mystery" ? mysteryOverlay : cacheOverlay)(); }
+    function finaleOverlay(gid) {
+        const R = REGIONS[actOf(gid) - 1] || REGIONS[0];
+        const ch = chapterOf(run.chapter || 0);
+        const body = h("div", "g-body g-finale");
+        const sky = h("div", "g-finale-sky");
+        sky.append(h("span", "g-finale-sun"), h("span", "g-finale-moon"));
+        body.append(sky, h("p", "g-chapter-kicker", `Chapter ${ch.n} · ${ch.title}`),
+            h("p", "g-lore", `${R.boss[1]} falls, and the dark lifts off ${R.name}. Every car tonight was looked at properly. The lantern dims to a warm glow.`));
+        sfx("victory"); haptic(HAPTIC.level);
+        burst(innerWidth / 2, innerHeight * 0.35, { n: 90, colors: ["#e0a243", "#e6dcc6", "#9aa3a8"], speed: 7, gravity: 0.12, lift: 4 });
+        panel({ kicker: "Finale", title: "Dawn on the road", body, actions: [{ label: "Onward", primary: true }] });
+        say(line("defeat"), true);
+    }
     function summaryOverlay() {
         const L = levelOf(meta.xp);
         const foes = Object.keys(run.defeated).length;
@@ -1567,7 +1925,7 @@
         body.append(gradeEl, h("p", "g-lore", text), dl);
         setTimeout(() => sfx("rank"), 400);
         moodOverride = "title"; mood();
-        panel({ kicker: "The tale is told", title: ctx.pack.title || "Expedition complete", body,
+        panel({ kicker: `Chapter ${chapterOf(run.chapter || 0).n} complete`, title: ctx.pack.title || "Expedition complete", body,
             actions: [{ label: "Share", onClick: () => { shareCard(grade, foes); return false; } }, { label: "Onward", primary: true }] });
         say(spoken, true);
         sfx("victory");
@@ -2194,7 +2552,9 @@
         if (type === "boss" || type === "elite" || Math.random() < 0.4) say(line("defeat"));
         if (run.pref === gid) run.pref = null;
         const stop = eventAfter(run.defeats);
+        const finale = type === "boss" && !nodes().some(x => groupOpen(x.groupId));
         setTimeout(() => {
+            if (finale) { enqueue(() => finaleOverlay(gid)); return; }
             enqueue(() => rewardOverlay(gid));
             if (type === "elite" || type === "boss") enqueue(() => relicOverlay("Trophy", `${foeName(gid)} drops a relic`));
             if (stop && nodes().some(x => groupOpen(x.groupId))) enqueue(() => eventOverlay(stop));

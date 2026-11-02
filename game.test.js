@@ -68,7 +68,7 @@ assert.ok(G.LANTERNS.amber.need({ xp: 0 }) && !G.LANTERNS.rose.need({ xp: 0 }));
 // Bounties never depend on a verdict; single-photo items never ask for every photo.
 assert.ok(["zoom", "details", "every"].includes(G.bountyOf("g#1", 3)));
 assert.ok(Array.from({ length: 20 }, (_, i) => G.bountyOf(`k${i}`, 1)).every(b => b !== "every"));
-assert.ok(Object.keys(G.FLAVOR).every(id => G.CARDS[id]));
+assert.ok(Object.keys(G.FLAVOR).every(id => G.CARDS[id])); { const miss = Object.keys(G.CARDS).filter(id => !G.FLAVOR[id]); assert.deepStrictEqual(miss, [], "cards without flavor") };
 // Long packs split into acts (max 5), each ending in its own boss; paths finish an act first.
 const mk = n => { const a = []; for (let g = 0; g < n; g++) for (let i = 0; i < 2; i++) a.push(card(`b${g}`, i)); return G.buildMap(a); };
 const r2 = mk(10);
@@ -118,3 +118,16 @@ console.log("rotation ok");
     assert.strictEqual(Object.keys(G.CLASSES).length, 6);
 }
 console.log("cards ok");
+
+// Story chapters loop by night; boons are three distinct gifts, stable per pack.
+{
+    assert.strictEqual(G.CHAPTERS.length, 12);
+    assert.deepStrictEqual([G.chapterOf(0).n, G.chapterOf(0).night], [1, 1]);
+    assert.strictEqual(G.chapterOf(12).title, G.CHAPTERS[0][0]);
+    assert.strictEqual(G.chapterOf(13).night, 2);
+    const b = G.boonChoices(42);
+    assert.strictEqual(new Set(b).size, 3);
+    assert.ok(b.every(id => G.BOONS[id]));
+    assert.deepStrictEqual(G.boonChoices(42), b);
+}
+console.log("story ok");

@@ -550,3 +550,21 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 /* Compendium family tabs */
 .g-fam-tabs { margin: 4px 0 12px; }
 .g-fam-tabs .g-chip-btn[aria-selected="true"] { background: var(--bone); color: var(--night); box-shadow: 0 2px 0 var(--bone-deep), 0 0 0 2px var(--amber); }
+
+/* Story chapter on the intro, and the dawn finale */
+.g-chapter { margin: 0 0 12px; padding: 12px 14px; border-radius: 10px; background: var(--night); box-shadow: inset 0 0 0 1px rgba(230, 220, 198, .12); }
+.g-chapter-kicker { margin: 0; font: 800 11px/1.2 var(--g-text); letter-spacing: .14em; text-transform: uppercase; color: var(--amber); }
+.g-chapter-title { margin: 4px 0 6px; font: 800 20px/1.15 var(--g-display); color: var(--bone); }
+.g-chapter-text { margin: 0; font: italic 400 14px/1.45 var(--g-display); color: var(--fog); }
+.g-finale-sky { position: relative; height: 150px; margin: -4px 0 12px; border-radius: 10px; overflow: hidden;
+    background: linear-gradient(to top, #e0a243 0%, #b4562f 22%, #2f4f57 58%, #1b2238 100%); }
+.g-finale-sun { position: absolute; left: 50%; bottom: -46px; width: 92px; height: 92px; margin-left: -46px; border-radius: 50%; background: var(--bone);
+    animation: g-sunrise 2.4s cubic-bezier(.2, .7, .2, 1) .2s both; }
+.g-finale-moon { position: absolute; right: 18%; top: 16px; width: 34px; height: 34px; border-radius: 50%; background: var(--fog); box-shadow: inset -9px -3px 0 var(--night);
+    animation: g-moonset 2.4s ease-in .2s both; }
+@keyframes g-sunrise { from { transform: translateY(70px); } to { transform: translateY(0); } }
+@keyframes g-moonset { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-40px); opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .g-finale-sun, .g-finale-moon { animation: none; } }
+
+.g-hero-pick:focus:not(:focus-visible) { outline: none; box-shadow: none; }
+.g-hero-pick[aria-checked="true"]:focus:not(:focus-visible) { box-shadow: 0 3px 0 var(--bone-deep), 0 0 0 3px var(--amber); }
