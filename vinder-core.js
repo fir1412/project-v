@@ -159,7 +159,23 @@
     const fieldsToCheck = (group, checks) => (Array.isArray(group && group.fields) ? group.fields : [])
         .filter(f => f && f.status === "check" && !fieldCheckOf(checks, group.groupId, f.id));
 
-    function decisionsFile(pack, cards, decisions, at, moves, checks) {
+    const overrideKey = (groupId, action) => `${groupId}|${action}`;
+    function setOverride(overrides, groupId, action, on, at) {
+        const next = { ...overrides };
+        const key = overrideKey(groupId, action);
+        if (on) next[key] = { groupId: String(groupId), action: String(action), at: at || new Date().toISOString() };
+        else delete next[key];
+        return next;
+    }
+    const hasOverride = (overrides, groupId, action) => Boolean(overrides && overrides[overrideKey(groupId, action)]);
+    function gateFor(group, action, overrides) {
+        const gate = (Array.isArray(group && group.gates) ? group.gates : []).find(g => g && g.action === action);
+        if (!gate) return { level: "none", text: "" };
+        if (gate.level === "block" && hasOverride(overrides, group.groupId, action)) return { level: "overridden", text: gate.text || "" };
+        return { level: gate.level === "block" ? "block" : "warn", text: gate.text || "", overrideText: gate.overrideText || "" };
+    }
+
+    function decisionsFile(pack, cards, decisions, at, moves, checks, overrides) {
         return {
             app: "VINder",
             kind: "decisions",
@@ -173,11 +189,12 @@
                 decidedAt: decisions[c.key].decidedAt
             })),
             moves: movesList(moves).map(m => ({ groupId: m.groupId, photoId: m.photoId, from: m.from, to: m.to, movedAt: m.at })),
+            overrides: Object.values(overrides || {}).map(o => ({ groupId: o.groupId, action: o.action, at: o.at })),
             fields: fieldChecksList(checks).map(f => ({ groupId: f.groupId, itemIndex: f.itemIndex ?? null, fieldId: f.fieldId, value: f.value, checkedAt: f.at }))
         };
     }
 
-    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, presetDecisions, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck, itemValue, itemTitle };
+    const api = { DIRECTIONS, DEFAULT_ACTIONS, itemKey, actionsOf, directionOf, readPack, swipeDirection, lean, isLater, isDecided, remainingCards, decide, undo, groupDone, progress, groupSummary, decisionsFile, presetDecisions, setOverride, hasOverride, gateFor, moveKey, setMove, moveOf, movesList, fieldKey, setFieldCheck, fieldCheckOf, fieldChecksList, fieldsToCheck, itemValue, itemTitle };
     root.VINderCore = api;
     if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

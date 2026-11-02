@@ -35,14 +35,14 @@
     const put = (name, value) => run(name, "readwrite", s => s.put(value));
     const del = (name, key) => run(name, "readwrite", s => s.delete(key));
 
-    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {}, checks: {} };
+    const S = { pack: null, cards: [], actions: V.actionsOf(null), decisions: {}, history: [], photoIndex: 0, sentAt: null, moves: {}, checks: {}, overrides: {} };
     const actionById = id => Object.values(S.actions).find(a => a.id === id) || null;
     const labelOf = id => (actionById(id) || { label: id }).label;
     const colorOf = id => (actionById(id) || { color: "" }).color;
 
     async function saveState() {
         if (!S.pack) return;
-        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt, moves: S.moves, checks: S.checks });
+        await put("state", { packId: S.pack.packId, decisions: S.decisions, history: S.history.slice(-200), sentAt: S.sentAt, moves: S.moves, checks: S.checks, overrides: S.overrides });
     }
 
     function show(screen) {
@@ -176,6 +176,7 @@
         S.sentAt = st.sentAt || null;
         S.moves = st.moves || {};
         S.checks = st.checks || {};
+        S.overrides = st.overrides || {};
         S.photoIndex = 0;
         applyActions();
         show(screen || "deck");
@@ -302,7 +303,7 @@
         if (data.photos.length) chips.appendChild(el("span", "chip", `${data.photos.length} photo${data.photos.length === 1 ? "" : "s"}`));
         const movedHere = V.movesList(S.moves).filter(m => m.groupId === data.group.groupId && (m.from === data.item.itemIndex || m.to === data.item.itemIndex)).length;
         if (movedHere) chips.appendChild(el("span", "chip moved", `${movedHere} photo move${movedHere === 1 ? "" : "s"}`));
-        if (data.group.flag && data.group.flag.text) chips.appendChild(el("span", "chip check", String(data.group.flag.text)));
+        if (data.group.flag && data.group.flag.text) chips.appendChild(el("span", `chip ${data.group.flag.tone === "block" && !Object.values(S.overrides).some(o => o.groupId === data.group.groupId) ? "block" : "check"}`, String(data.group.flag.text)));
         const toCheck = V.fieldsToCheck(data.group, S.checks).length;
         if (toCheck) {
             const chip = el("button", "chip check", `${data.group.fieldsChip || "To check"}: ${toCheck}`);
@@ -363,8 +364,18 @@
                 return;
             }
             const dir = V.swipeDirection(dx, dy, rect.width, rect.height, Math.hypot(dx, dy) / dt);
-            if (dir) flyOut(card, data, dir, dx, dy);
-            else {
+            if (dir) {
+                const actionId = S.actions[dir].id;
+                if (V.gateFor(data.group, actionId, S.overrides).level === "block") {
+                    card.classList.add("returning");
+                    card.style.transform = "";
+                    setStamps(card, NO_LEAN);
+                }
+                throughGate(data, actionId, () => {
+                    const live = $("stack").querySelector(".card:not(.behind)") || card;
+                    flyOut(live, data, dir, live === card ? dx : 0, live === card ? dy : 0);
+                });
+            } else {
                 card.classList.add("returning");
                 card.style.transform = "";
                 setStamps(card, NO_LEAN);
@@ -379,6 +390,24 @@
         if (next < 0 || next >= data.photos.length) { buzz(8); return; }
         S.photoIndex = next;
         drawPhoto(card, data, next);
+    }
+
+    function throughGate(data, actionId, go, cancel) {
+        const gate = V.gateFor(data.group, actionId, S.overrides);
+        if (gate.level === "block") {
+            openPicker(`${labelOf(actionId)} is blocked`, [
+                { label: `Override - allow ${labelOf(actionId)} anyway`, sub: gate.overrideText || "Saved with the group and sent back.", value: "yes" },
+                { label: "Cancel", value: "" }
+            ], null, async value => {
+                if (!value) { if (cancel) cancel(); return; }
+                S.overrides = V.setOverride(S.overrides, data.group.groupId, actionId, true);
+                await saveState();
+                go();
+            }, gate.text);
+            return;
+        }
+        if (gate.level === "warn" && gate.text) toast(gate.text, 4500);
+        go();
     }
 
     function flyOut(card, data, dir, dx, dy) {
@@ -420,7 +449,7 @@
         const q = queue();
         const card = $("stack").querySelector(".card:not(.behind)");
         if (!q.length || !card) return;
-        flyOut(card, q[0], dir, 0, 0);
+        throughGate(q[0], S.actions[dir].id, () => flyOut(card, q[0], dir, 0, 0));
     }
     document.querySelectorAll(".act[data-dir]").forEach(b => b.addEventListener("click", () => decideTop(b.dataset.dir)));
     $("actUndo").addEventListener("click", async () => {
@@ -1051,9 +1080,10 @@
     $("sheetClose").addEventListener("click", closeSheet);
     $("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
 
-    function openPicker(title, options, current, onPick) {
+    function openPicker(title, options, current, onPick, note) {
         const body = $("moveBody");
         body.replaceChildren();
+        if (note) body.appendChild(el("p", "note-text", note));
         for (const o of options) {
             const b = el("button", `move-opt${o.value === current ? " on" : ""}`);
             b.type = "button";
@@ -1108,7 +1138,7 @@
             const ht = el("div", "grp-title");
             ht.append(el("span", "", g.title || ""), el("small", "", g.subtitle || ""));
             head.appendChild(ht);
-            if (g.flag && g.flag.text) head.appendChild(el("span", "grp-flag", String(g.flag.text)));
+            if (g.flag && g.flag.text) head.appendChild(el("span", `grp-flag${g.flag.tone === "block" ? " block" : ""}`, String(g.flag.text)));
             sec.appendChild(head);
             for (const c of cards) {
                 const row = el("div", "row");
@@ -1128,20 +1158,28 @@
                 btn.addEventListener("click", () => openPicker(title,
                     [...V.DIRECTIONS.map(d => ({ label: S.actions[d].label, value: S.actions[d].id, color: S.actions[d].color })), { label: "Open (not decided)", value: "" }],
                     cur, async value => {
-                        if (!value) { const next = { ...S.decisions }; delete next[c.key]; S.decisions = next; }
-                        else S.decisions = V.decide(S.decisions, S.history, c, value, S.actions).decisions;
-                        await saveState();
-                        renderReview();
+                        const apply = async () => {
+                            if (!value) { const next = { ...S.decisions }; delete next[c.key]; S.decisions = next; }
+                            else S.decisions = V.decide(S.decisions, S.history, c, value, S.actions).decisions;
+                            await saveState();
+                            renderReview();
+                        };
+                        if (value) throughGate(c, value, apply); else await apply();
                     }));
                 row.append(thumb, text, btn);
                 sec.appendChild(row);
             }
             const gm = moves.filter(m => m.groupId === gid);
             const gc = checks.filter(x => x.groupId === gid);
-            if (gm.length || gc.length) {
+            const go = Object.values(S.overrides || {}).filter(o => o.groupId === gid);
+            if (gm.length || gc.length || go.length) {
                 const det = el("details", "changes");
-                const parts = [gm.length ? `${gm.length} photo move${gm.length === 1 ? "" : "s"}` : "", gc.length ? `${gc.length} value${gc.length === 1 ? "" : "s"} checked` : ""].filter(Boolean);
+                const parts = [go.length ? "override" : "", gm.length ? `${gm.length} photo move${gm.length === 1 ? "" : "s"}` : "", gc.length ? `${gc.length} value${gc.length === 1 ? "" : "s"} checked` : ""].filter(Boolean);
                 det.appendChild(el("summary", "", parts.join(" · ")));
+                for (const o of go) {
+                    det.appendChild(changeLine(`Override: ${labelOf(o.action)} allowed`,
+                        async () => { S.overrides = V.setOverride(S.overrides, o.groupId, o.action, false); }));
+                }
                 for (const m of gm) {
                     const att = (Array.isArray(g.attachments) ? g.attachments : []).find(a => String(a.id) === m.photoId);
                     det.appendChild(changeLine(`${m.from === null ? ((att && att.title) || "Photo") : `Photo of ${itemTitle(g, m.from)}`} → ${moveText(m)}`,
@@ -1172,7 +1210,7 @@
     }
 
     $("sendDecisions").addEventListener("click", async () => {
-        const data = V.decisionsFile(S.pack, S.cards, S.decisions, undefined, S.moves, S.checks);
+        const data = V.decisionsFile(S.pack, S.cards, S.decisions, undefined, S.moves, S.checks, S.overrides);
         const name = `vinder-decisions-${S.pack.packId}.txt`;
         const blob = new Blob([JSON.stringify(data, null, 1)], { type: "text/plain" });
         const file = new File([blob], name, { type: "text/plain" });
