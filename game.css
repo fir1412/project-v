@@ -626,3 +626,43 @@ body:has(.g-sub:not([hidden])) .g-panel { max-height: calc(100dvh - 112px); }
 @media (prefers-reduced-motion: reduce) { .g-float { animation: g-fade 1.1s ease-out reverse forwards; } }
 .g-f-dmg, .g-f-crit { -webkit-text-stroke: 7px var(--night-deep); }
 .g-f-dmg { color: #fff; }
+/* Gap 2: the hand is a fan of real cards: family band, rarity ring, the tapped card lifts. */
+.g-hand { align-items: flex-end; padding-top: 8px; }
+.g-card { transform: translateY(var(--drop, 0px)) rotate(var(--rot, 0deg)); transform-origin: 50% 130%; }
+.g-card::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 3px; border-radius: 2px 2px 0 0; background: var(--fam, transparent); }
+.g-card.g-rare { box-shadow: 0 3px 0 var(--bone-deep), inset 0 0 0 2px var(--teal-light); }
+.g-card.g-epic { box-shadow: 0 3px 0 var(--bone-deep), inset 0 0 0 2px var(--crimson); }
+.g-card.g-sel { z-index: 5; transform: translateY(-14px) scale(1.08); box-shadow: 0 8px 0 rgba(18, 24, 41, .45), 0 0 0 2px var(--amber); }
+.g-card:active { transform: translateY(calc(var(--drop, 0px) + 2px)) rotate(var(--rot, 0deg)); }
+/* Gap 3: the vanquish beat and the spoils. */
+.g-vanq { position: absolute; z-index: 4; left: 50%; top: 46%; transform: translate(-50%, -50%) rotate(-8deg); padding: 6px 16px; border: 3px solid var(--rust); border-radius: 8px;
+    font: 900 28px/1 var(--g-display); letter-spacing: .06em; text-transform: uppercase; color: var(--bone); background: rgba(18, 24, 41, .55); pointer-events: none;
+    animation: g-slam .42s cubic-bezier(.2, 1.4, .4, 1) both; }
+.g-vanq-boss { font-size: 34px; border-color: var(--amber); color: var(--amber); }
+@keyframes g-slam { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(-8deg) scale(2.2); } 60% { opacity: 1; } 100% { opacity: 1; transform: translate(-50%, -50%) rotate(-8deg) scale(1); } }
+.g-flash::after { content: ""; position: absolute; inset: 0; z-index: 3; background: var(--bone); opacity: 0; animation: g-flash .28s ease-out; pointer-events: none; }
+@keyframes g-flash { 15% { opacity: .55; } }
+.g-spoils { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.g-spoil { padding: 7px 12px; border-radius: 999px; font: 800 14px/1 var(--g-display); background: var(--night); color: var(--bone); box-shadow: 0 3px 0 var(--night-deep);
+    animation: g-spoil .38s cubic-bezier(.2, 1.4, .4, 1) both; }
+.g-spoil-xp { color: var(--amber); }
+.g-spoil-relic { background: var(--rust); }
+@keyframes g-spoil { from { opacity: 0; transform: translateY(10px) scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .g-vanq, .g-spoil { animation: none; } .g-flash::after { animation: none; } }
+/* Gap 5: the map fills the screen. */
+.g-panel-map { height: calc(100dvh - 32px); display: flex; flex-direction: column; }
+.g-panel-map > .g-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.g-panel-map .g-map { flex: 1; max-height: none; min-height: 0; }
+/* Gap 7: card type ribbon and a gold edge when sharpened. */
+.g-big { position: relative; }
+.g-big-type { position: absolute; left: 10px; top: 10px; padding: 3px 7px; border-radius: 4px; font: 800 9.5px/1 var(--g-text); letter-spacing: .08em; text-transform: uppercase;
+    background: rgba(18, 24, 41, .82); color: var(--bone); }
+.g-big.g-up { box-shadow: 0 3px 0 var(--amber-deep), inset 0 0 0 3px var(--amber); }
+/* Gap 8: in-world empty state. */
+body.game-on .empty::before { content: ""; display: block; width: 56px; height: 56px; margin: 0 auto 6px; background: url("assets/ui/relic-lamp.webp") center / contain no-repeat; }
+body.game-on .empty .only-game:first-of-type { font: italic 600 18px/1.3 var(--g-display); color: var(--bone); }
+.g-card.g-ready { box-shadow: 0 3px 0 var(--amber-deep), 0 0 0 2px var(--amber); }
+.g-card.g-armed { box-shadow: 0 0 0 3px var(--amber), 0 10px 0 rgba(18, 24, 41, .5); }
+.g-big-name { overflow-wrap: normal; word-break: normal; hyphens: auto; font-size: clamp(12.5px, 3.7vw, 16px); }
+.g-foe-name:has(.g-tag:not(:empty)) b { font-size: 14.5px; }
+.g-map-node.done b, .g-map-node.done small { opacity: 1; color: rgba(27, 34, 56, .5); }

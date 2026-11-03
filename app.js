@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 17";
+    const APP_VERSION = "2026-11-03 · Pale Moon 18";
 
     let dbPromise = null;
     function db() {
@@ -171,7 +171,8 @@
             const empty = el("div", "empty");
             const art = el("div", "empty-art");
             art.append(el("i"), el("i"), el("i"));
-            empty.append(art, el("p", "", "No pack on this phone yet."), el("p", "", "Open a pack file, or share one to VINder from your files app."));
+            empty.append(art, el("p", "only-work", "No pack on this phone yet."), el("p", "only-work", "Open a pack file, or share one to VINder from your files app."),
+                el("p", "only-game", "The lot is quiet tonight."), el("p", "only-game", "Open a pack and Yui will light the lantern."));
             list.appendChild(empty);
             return;
         }

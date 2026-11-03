@@ -1489,18 +1489,26 @@
         if (lf.dataset.hero !== lh) { lf.dataset.hero = lh; lf.replaceChildren(initial(CLASSES[lh].name[0]), liveArt("heroes", lh, "", "")); }
     }
     const rarity = def => def.unlock >= 4 ? "epic" : def.unlock >= 2 ? "rare" : "common";
+    const FAM_COLOR = { seer: "#e0a243", scribe: "#9aa3a8", warden: "#2f4f57", wayfarer: "#6f7d5a", moonsmith: "#b4562f", huntress: "#9c2f3a" };
     const gainText = (id, g) => (CARDS[id].on === "play" ? `Costs ${costOf(id, false, run ? run.relics : [], false)} Light` : [g.xp && `+${g.xp} XP`, g.light && `+${g.light} Light`, g.scrap && `+${g.scrap} shards`].filter(Boolean).join(" · "));
     function renderHand() {
         const hand = $("gHand");
         hand.replaceChildren();
         if (!run) return;
+        const n = run.hand.length;
+        let i = -1;
         for (const uid of run.hand) {
             const c = cardOf(uid);
+            i++;
             if (!c) continue;
             const def = CARDS[c.id];
+            const off = i - (n - 1) / 2;
             const b = h("button", `g-card g-${rarity(def)}${c.up ? " g-up" : ""}${justDrawn.has(uid) ? " g-draw" : ""}`);
             b.type = "button";
             b.dataset.uid = uid;
+            b.style.setProperty("--rot", `${off * 3}deg`);
+            b.style.setProperty("--drop", `${Math.abs(off) * 4}px`);
+            b.style.setProperty("--fam", FAM_COLOR[def.hero] || "var(--bone-deep)");
             b.setAttribute("aria-label", `${def.name}${c.up ? " plus" : ""}: ${def.text}, ${gainText(c.id, cardGain(c.id, c.up, run.relics))}`);
             const pic = h("span", "g-card-art");
             pic.append(initial(def.name[0]), cardArt(c.id));
@@ -1519,6 +1527,8 @@
                 const same = !tip.hidden && tip.dataset.uid === uid;
                 tip.hidden = same;
                 tip.dataset.uid = uid;
+                hand.querySelectorAll(".g-sel").forEach(x => x.classList.remove("g-sel"));
+                if (!same) b.classList.add("g-sel");
                 const parts = [h("b", "", `${def.name}${c.up ? "+" : ""}`), h("span", "", def.text)];
                 if (cost !== null) {
                     const play = h("button", "btn btn-primary g-play", run.light >= cost ? `Play · ${cost} Light` : `Need ${cost} Light (you have ${run.light})`);
@@ -1637,9 +1647,9 @@
         fn();
     }
     // actions: [{ label, primary, onClick }]; onClick returning false keeps the panel open.
-    function panel({ kicker, title, body, actions, wide }) {
+    function panel({ kicker, title, body, actions, wide, cls }) {
         overlay.replaceChildren();
-        const p = h("div", `g-panel${wide ? " g-wide" : ""}`);
+        const p = h("div", `g-panel${wide ? " g-wide" : ""}${cls ? ` ${cls}` : ""}`);
         if (kicker) p.appendChild(h("div", "g-kicker", kicker));
         const t = h("h2", "g-title", title);
         t.id = "gOvTitle";
@@ -1671,6 +1681,7 @@
         b.classList.add(`g-${rarity(def)}`);
         b.append(pic, h("span", "g-big-name", `${def.name}${up ? "+" : ""}`), h("span", "g-big-text", def.text),
             h("span", "g-big-gain", gainText(id, cardGain(id, up, run ? run.relics : []))));
+        b.appendChild(h("span", "g-big-type", def.on === "play" ? "Active" : "Passive"));
         if (note) b.appendChild(h("span", "g-big-note", note));
         return b;
     }
@@ -1731,7 +1742,9 @@
             heroes.appendChild(b);
         }
         const om = run.omen && OMENS[run.omen];
-        body.append(h("p", "g-lore", text), ...(om ? [h("p", "g-omen", `Tonight's omen · ${om.name}: ${om.text}`)] : []), heroes, routeEl(),
+        body.append(h("p", "g-lore", text), ...(om ? [h("p", "g-omen", `Tonight's omen · ${om.name}: ${om.text}`)] : []));
+        const pickBody = h("div", "g-body");
+        pickBody.append(h("p", "g-lore", "Who walks the road tonight?"), heroes,
             h("p", "g-fine", "Every verdict strikes the same blow, whatever you choose. Cards reward looking closely: flipping photos, zooming, reading details, checking values. Choose what's true."));
         if (run.chapter === undefined) run.chapter = meta.runs || 0;
         const ch = chapterOf(run.chapter);
@@ -1740,7 +1753,12 @@
         const chap = h("div", "g-chapter");
         chap.append(h("p", "g-chapter-kicker", `Chapter ${ch.n}${ch.night > 1 ? ` · Night ${ch.night}` : ""}`), h("p", "g-chapter-title", ch.title), h("p", "g-chapter-text", ch.text));
         body.prepend(chap);
-        panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Begin", primary: true, onClick: () => {
+        const heroStep = () => {
+            panel({ kicker: `Chapter ${ch.n} · ${ch.title}`, title: "Choose your hero", body: pickBody, actions: [{ label: "Begin", primary: true, onClick: begin }] });
+            pickHero(run.hero || "seer");
+        };
+        panel({ kicker: "A new tale begins", title: ctx.pack.title || "The Expedition", body, actions: [{ label: "Continue", primary: true, onClick: () => { heroStep(); return false; } }] });
+        function begin() {
             audio(); mood();
             // The hand was dealt before the class was chosen; deal it again from the chosen deck.
             if (!run.played && !Object.keys(run.scored).length) {
@@ -1750,7 +1768,7 @@
             }
             if (!run.boon) enqueue(boonOverlay);
             queuePath();
-        } }] });
+        }
         pickHero(run.hero || "seer");
         say(chLine || spoken, true);
     }
@@ -1833,7 +1851,7 @@
             body.appendChild(rel);
         }
         if (run) body.appendChild(h("p", "g-fine", `Deck: ${run.deck.length} cards · ${run.scrap} moonshards`));
-        panel({ kicker: "The road", title: ctx.pack.title || "Route", body, actions: [{ label: "Close", primary: true }] });
+        panel({ kicker: "The road", title: ctx.pack.title || "Route", body, cls: "g-panel-map", actions: [{ label: "Close", primary: true }] });
     }
     function rewardOverlay(gid) {
         const body = h("div", "g-body");
@@ -1847,6 +1865,17 @@
                 nextOverlay();
             });
             row.appendChild(b);
+        }
+        const sp = run.spoils;
+        run.spoils = null;
+        if (sp) {
+            const loot = h("div", "g-spoils");
+            const chip = (cls, text) => { const c = h("span", `g-spoil ${cls}`, text); c.style.animationDelay = `${loot.children.length * 140}ms`; loot.appendChild(c); };
+            chip("g-spoil-xp", `+${sp.xp} XP`);
+            if (sp.shards) chip("g-spoil-shard", `+${sp.shards} moonshards`);
+            if (sp.relic) chip("g-spoil-relic", "Relic next");
+            body.appendChild(loot);
+            setTimeout(() => sfx("coin"), 200);
         }
         body.append(h("p", "g-lore", "Choose a card for your deck."), row);
         panel({ kicker: "Victory", title: `${foeName(gid)} is vanquished`, body, actions: [{ label: "Skip" }] });
@@ -2622,6 +2651,13 @@
         if (type === "boss") award("boss");
         if (Object.keys(meta.bestiary).length >= REGIONS.reduce((n, R) => n + R.species.length + 1, 0)) award("naturalist");
         holdUntil = performance.now() + (reduce ? 300 : 1000);
+        run.spoils = { xp, shards, relic: type === "elite" || type === "boss" };
+        const scene = portraitEl.parentElement;
+        const stamp = h("div", `g-vanq${type === "boss" ? " g-vanq-boss" : ""}`, "Vanquished");
+        stamp.setAttribute("aria-hidden", "true");
+        scene.appendChild(stamp);
+        setTimeout(() => stamp.remove(), reduce ? 700 : 1500);
+        if (!reduce) restartClass(scene, "g-flash", 280);
         setTimeout(() => grant(xp, portraitEl), 350);
         sfx("defeat");
         haptic(HAPTIC.defeat);
@@ -2648,6 +2684,18 @@
         if (options.length < 2) { prefer(options[0] ? options[0].groupId : null); return; }
         enqueue(() => pathOverlay(options));
     }
+    const FORKS = [
+        ["The road forks", "The road forks under the moon. Which way?"],
+        ["Tracks in the frost", "Small tracks split at the lamp post. Follow one."],
+        ["Yui points", "Yui lifts the lantern higher. \"That way looks quiet. Too quiet.\""],
+        ["Eyes between the rows", "Rows of cars, and between them, eyes. Choose where to look first."],
+        ["A crossroads of puddles", "Each puddle holds a different moon. Step into one."],
+        ["Rattles in the dark", "Something rattles three rows over. Something else hums nearer."],
+        ["The night is long", "The moon has barely moved. Pick the next one to face."],
+        ["The flame leans", "The flame leans one way, the wind the other. Your call."],
+        ["Fog in three places", "The fog parts in three places. Something waits down each."],
+        ["Choose your hunt", "Every path ends at a car that wants a careful eye."]
+    ];
     function pathOverlay(options) {
         const body = h("div", "g-body");
         const list = h("div", "g-paths");
@@ -2666,9 +2714,10 @@
             b.addEventListener("click", () => { sfx("confirm"); haptic(HAPTIC.pick); run.paths = (run.paths || 0) + 1; moment("path"); prefer(o.groupId); nextOverlay(); });
             list.appendChild(b);
         }
-        body.append(h("p", "g-lore", "The road forks under the moon. Which way?"), list,
+        const [forkTitle, forkLine] = FORKS[(run.paths || 0) % FORKS.length];
+        body.append(h("p", "g-lore", forkLine), list,
             h("p", "g-fine", "Every vehicle still gets inspected; this only chooses the order. Elites drop relics."));
-        panel({ kicker: "Choose your path", title: "The road forks", body, actions: [] });
+        panel({ kicker: "Choose your path", title: forkTitle, body, actions: [] });
     }
 
     // ---------- app events ----------

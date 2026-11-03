@@ -308,3 +308,6 @@ button { font: inherit; color: inherit; }
 #byMark { gap: 1px; align-content: center; }
 #byMark svg { width: 18px; height: 18px; }
 #byMark .icon-label { font: 700 9px/1 system-ui, sans-serif; letter-spacing: .02em; }
+.only-game { display: none; }
+body.game-on .only-game { display: block; }
+body.game-on .only-work, body.game-on .empty-art { display: none; }
