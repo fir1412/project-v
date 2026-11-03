@@ -1333,8 +1333,10 @@
                 <div class="g-foe-sub" id="gFoeSub"></div>
                 <div class="g-life" role="meter" aria-label="Left to decide on this foe" id="gHp" data-explain="One segment per item still to decide on this foe. Every verdict removes one, whichever verdict it is."></div>
             </div>
-            <div class="g-bounty" id="gBounty" hidden></div>
-            <button type="button" class="g-wager" id="gWager" hidden></button>
+            <div class="g-tags">
+                <div class="g-bounty" id="gBounty" hidden></div>
+                <button type="button" class="g-wager" id="gWager" hidden></button>
+            </div>
         </div>`;
     // Dock above the verdict buttons: hero, hand, resources.
     const dock = h("div", "g-dock");

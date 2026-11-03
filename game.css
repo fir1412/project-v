@@ -284,13 +284,14 @@ body.game-on .actions { padding: 6px 10px calc(32px + env(safe-area-inset-bottom
 
 /* Small phones: keep the verdict row, hero picks and reward cards from colliding. */
 body.game-on .actions { gap: clamp(6px, 2.6vw, 14px); }
-body.game-on .act span { left: 50%; width: 58px; margin-left: -29px; top: calc(100% + 4px); bottom: auto; text-align: center; white-space: normal; line-height: 1.1;
-    font-size: 11px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+body.game-on .act span { left: 50%; width: max-content; max-width: 78px; transform: translateX(-50%); top: calc(100% + 4px); bottom: auto; text-align: center;
+    white-space: nowrap; line-height: 1.1; font-size: 11px; overflow: hidden; text-overflow: ellipsis; }
 body.game-on .act-left, body.game-on .act-right { width: clamp(54px, 15vw, 66px); height: clamp(54px, 15vw, 66px); }
 body.game-on .act-up { width: clamp(48px, 13vw, 56px); height: clamp(48px, 13vw, 56px); }
 body.game-on .act-undo, body.game-on .act-down { width: clamp(42px, 11vw, 48px); height: clamp(42px, 11vw, 48px); }
 .g-big, .g-hero-pick { min-width: 0; }
-.g-big-name, .g-big-text, .g-hero-pick b, .g-hero-pick small { overflow-wrap: anywhere; }
+.g-big-name, .g-big-text, .g-hero-pick small { overflow-wrap: anywhere; }
+.g-hero-pick b { white-space: nowrap; font-size: clamp(12.5px, 3.7vw, 16px); letter-spacing: -.01em; }
 @media (max-width: 380px) {
     .g-big-row { gap: 6px; }
     .g-big { padding: 5px 5px 8px; min-height: 180px; }
@@ -298,7 +299,6 @@ body.game-on .act-undo, body.game-on .act-down { width: clamp(42px, 11vw, 48px);
     .g-big-text { font-size: 11px; }
     .g-hero-pick { padding: 8px 4px 10px; }
     .g-hero-pick-face { width: 48px; height: 48px; }
-    .g-hero-pick b { font-size: 14px; }
     .g-hero-pick small { font-size: 10.5px; }
     .g-panel > .g-kicker, .g-panel > .g-title, .g-body, .g-actions { padding-left: 14px; padding-right: 14px; }
 }
@@ -515,7 +515,7 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 .g-swatch:disabled { opacity: .5; }
 
 /* ---------- premium round 4: bounties, piles, explain, compendium ---------- */
-.g-bounty { position: absolute; z-index: 2; right: 10px; top: 40px; max-width: 46%; display: grid; gap: 1px; padding: 6px 9px; border-radius: 8px;
+.g-bounty { position: relative; max-width: 100%; display: grid; gap: 1px; padding: 6px 9px; border-radius: 8px;
     background: rgba(18, 24, 41, .86); color: var(--bone); font: 600 11.5px/1.25 var(--g-text); text-align: right; }
 .g-bounty b { font: 800 11.5px/1.2 var(--g-text); color: var(--amber); }
 .g-bounty.done { opacity: .55; }
@@ -535,7 +535,7 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
     box-shadow: 0 3px 0 var(--bone-deep); font: 600 13px/1.4 var(--g-text); pointer-events: none; animation: g-draw .2s var(--g-in); }
 
 /* ---------- round 5: wager, acts, boss phase ---------- */
-.g-wager { position: absolute; z-index: 2; left: 8px; top: 40px; min-height: 30px; padding: 0 10px; border: 0; border-radius: 999px; cursor: pointer;
+.g-wager { position: relative; min-height: 30px; padding: 0 10px; border: 0; border-radius: 999px; cursor: pointer;
     background: var(--amber); color: var(--night); font: 800 11.5px/1 var(--g-text); box-shadow: 0 2px 0 var(--amber-deep); }
 .g-wager[hidden] { display: none; }
 .g-wager.on { background: var(--night); color: var(--amber); box-shadow: inset 0 0 0 2px var(--amber); }
@@ -592,3 +592,37 @@ body.game-on .g-omen { display: grid; gap: 2px; margin: 0 16px 14px; padding: 10
 .g-map-node b, .g-map-node small, .g-map-act { text-shadow: 0 0 3px var(--bone), 0 0 6px var(--bone), 0 0 9px var(--bone); }
 body.game-on #home { overflow-x: clip; }
 .g-fam-tabs .g-chip-btn:focus:not(:focus-visible) { outline: none; }
+
+/* ---------- polish pass 1 (Pale Moon 17) ---------- */
+.g-tags { position: absolute; z-index: 2; left: 8px; top: 40px; right: 150px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; pointer-events: none; }
+.g-tags > * { pointer-events: auto; }
+/* Floating numbers always above the scene, tags and hand. */
+.g-float { z-index: 49; }
+/* Yui's subtitle never covers a panel: panels make room under it. */
+body:has(.g-sub:not([hidden])) .g-overlay { padding-top: 96px; }
+body:has(.g-sub:not([hidden])) .g-panel { max-height: calc(100dvh - 112px); }
+/* Map: the road runs behind the names, not through them. */
+.g-map-node b, .g-map-node small { position: relative; padding: 0 6px; border-radius: 4px; background: rgba(230, 220, 198, .94); text-shadow: none; }
+.g-map-node b { margin-top: 4px; }
+/* Hand: full card names on up to two lines. */
+.g-card { height: 72px; }
+.g-card-name { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; font-size: 11px; line-height: 1.05; min-height: 2.1em; display: -webkit-box; align-content: center; }
+/* Gap 1: the foe is the star. Taller scene band, bigger foe with a ground shadow; tags and plate keep to the left. */
+.g-scene { height: 164px; }
+.g-portrait { width: 168px; height: 168px; right: 2px; bottom: -6px; }
+.g-portrait.g-boss { width: 196px; height: 196px; bottom: -10px; }
+.g-portrait::before { content: ""; position: absolute; left: 18%; right: 18%; bottom: 8px; height: 16px; border-radius: 50%; background: radial-gradient(closest-side, rgba(18, 24, 41, .55), transparent); }
+.g-plate { max-width: calc(100% - 178px); }
+.g-tags { right: 178px; }
+.g-plate .g-foe-name b { font-size: 17px; }
+@media (max-height: 700px) { .g-scene { height: 140px; } .g-portrait { width: 144px; height: 144px; } }
+/* Hit numbers: pop, hold, then rise away; bigger and higher contrast over pale foes. */
+.g-float { animation-name: g-pop-rise; text-shadow: 0 3px 0 var(--night-deep); }
+.g-f-dmg { font-size: 42px; }
+.g-f-crit { font-size: 46px; }
+.g-f-xp { font-size: 22px; margin-top: 36px; }
+@keyframes g-pop-rise { 0% { opacity: 0; transform: translate(-50%, -20%) scale(.6); } 12% { opacity: 1; transform: translate(-50%, -70%) scale(1.25); }
+    24% { transform: translate(-50%, -78%) scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -170%); } }
+@media (prefers-reduced-motion: reduce) { .g-float { animation: g-fade 1.1s ease-out reverse forwards; } }
+.g-f-dmg, .g-f-crit { -webkit-text-stroke: 7px var(--night-deep); }
+.g-f-dmg { color: #fff; }

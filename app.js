@@ -5,7 +5,7 @@
     const $ = id => document.getElementById(id);
     const EDGE = 24;      // px from the screen edge are left to the phone's back gesture
     const TAP_MOVE = 10;
-    const APP_VERSION = "2026-11-03 · Pale Moon 16";
+    const APP_VERSION = "2026-11-03 · Pale Moon 17";
 
     let dbPromise = null;
     function db() {
@@ -1663,6 +1663,7 @@
     $("backDeck").addEventListener("click", () => show("deck"));
 
     function maybeCoach() {
+        if (document.body.classList.contains("game-on")) return; // Pale Moon runs its own tutorial
         try {
             if (localStorage.getItem("vinderCoached")) return;
             localStorage.setItem("vinderCoached", "1");
